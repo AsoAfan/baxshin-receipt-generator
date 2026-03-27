@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+  <meta name="theme-color" content="#0cb09b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+</head>
+<body>
+  <aside id="offline-banner" class="offline-banner no-print" hidden>
+    <p>You are offline. Showing cached content.</p>
+  </aside>
+
+  <main class="page page-form">
+    <section class="form-card">
+      <header class="hero">
+        <p class="eyebrow">Simple Receipt Tool</p>
+        <h1>Create Receipt</h1>
+        <p class="sub">Made for quick use by non-technical staff.</p>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" class="receipt-form">
+        <label>
+          Date
+          <input type="date" name="invoice_date" value="{{ today }}" required />
+        </label>
+
+        <label>
+          Customer Name
+          <input id="customer_name" list="customers_list" name="customer_name" required placeholder="Select or type customer name" />
+          <datalist id="customers_list"></datalist>
+        </label>
+
+        <section class="items-block" aria-label="Receipt items">
+          <div class="items-head">
+            <h2>Items</h2>
+            <button type="button" id="add-item" class="button ghost">Add Item</button>
+          </div>
+
+          <div class="item-columns" aria-hidden="true">
+            <span>Description</span>
+            <span>Qty</span>
+            <span>Price (IQD)</span>
+            <span></span>
+          </div>
+
+          <div id="items-list">
+            <div class="item-row">
+              <div class="item-description-wrap">
+                <input class="item-description" list="items_list" name="description[]" placeholder="Select or type item" required />
+              </div>
+              <div class="item-field item-qty-field">
+                <span class="item-field-label">Qty</span>
+                <input class="item-qty" name="qty[]" type="number" step="1" min="1" placeholder="Qty" aria-label="Qty" required />
+              </div>
+              <div class="item-field item-price-field">
+                <span class="item-field-label">Price (IQD)</span>
+                <input class="item-price" name="price[]" type="number" step="1" min="0" placeholder="Price (IQD)" aria-label="Price (IQD)" required />
+              </div>
+              <button type="button" class="button remove remove-item-btn" title="Remove item" aria-label="Remove item">x</button>
+            </div>
+          </div>
+          <datalist id="items_list"></datalist>
+        </section>
+
+        <label>
+          Notes (optional)
+          <input name="notes" placeholder="Optional notes" />
+        </label>
+
+        <div class="actions">
+          <button class="button primary" type="submit">Generate Receipt</button>
+          <a class="button ghost" href="{{ url_for('history') }}">View History</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <template id="item-template">
+    <div class="item-row">
+      <div class="item-description-wrap">
+        <input class="item-description" list="items_list" name="description[]" placeholder="Select or type item" required />
+      </div>
+      <div class="item-field item-qty-field">
+        <span class="item-field-label">Qty</span>
+        <input class="item-qty" name="qty[]" type="number" step="1" min="1" placeholder="Qty" aria-label="Qty" required />
+      </div>
+      <div class="item-field item-price-field">
+        <span class="item-field-label">Price (IQD)</span>
+        <input class="item-price" name="price[]" type="number" step="1" min="0" placeholder="Price (IQD)" aria-label="Price (IQD)" required />
+      </div>
+      <button type="button" class="button remove remove-item-btn" title="Remove item" aria-label="Remove item">x</button>
+    </div>
+  </template>
+
+  <script>
+    const itemsList = document.getElementById('items-list');
+    const itemTemplate = document.getElementById('item-template');
+    const addItemButton = document.getElementById('add-item');
+    let itemPricesMap = {};
+
+    function appendItemRow() {
+      const node = itemTemplate.content.cloneNode(true);
+      itemsList.appendChild(node);
+      attachItemListeners(node);
+      const rows = itemsList.querySelectorAll('.item-row');
+      return rows[rows.length - 1];
+    }
+
+    function rowHasAnyValue(row) {
+      const description = row.querySelector('.item-description')?.value?.trim() || '';
+      const qty = row.querySelector('.item-qty')?.value?.trim() || '';
+      const price = row.querySelector('.item-price')?.value?.trim() || '';
+      return Boolean(description || qty || price);
+    }
+
+    function ensureNextRowIfNeeded(row) {
+      const rows = itemsList.querySelectorAll('.item-row');
+      const lastRow = rows[rows.length - 1];
+      if (row !== lastRow) return;
+      if (!rowHasAnyValue(row)) return;
+      appendItemRow();
+    }
+
+    addItemButton.addEventListener('click', () => {
+      appendItemRow();
+    });
+
+    itemsList.addEventListener('click', (event) => {
+      if (!event.target.classList.contains('remove')) return;
+      const rows = itemsList.querySelectorAll('.item-row');
+      if (rows.length === 1) return;
+      event.target.closest('.item-row').remove();
+    });
+
+    // Attach listeners to item description inputs for price auto-fill
+    function attachItemListeners(container = document) {
+      const descInputs = container.querySelectorAll('.item-description');
+      descInputs.forEach((input) => {
+        if (input.dataset.listenerAttached) return;
+        input.dataset.listenerAttached = 'true';
+        
+        input.addEventListener('change', (event) => {
+          const itemDesc = event.target.value.trim();
+          if (itemPricesMap[itemDesc]) {
+            const priceInput = event.target.closest('.item-row').querySelector('.item-price');
+            priceInput.value = Math.round(itemPricesMap[itemDesc]);
+          }
+          ensureNextRowIfNeeded(event.target.closest('.item-row'));
+        });
+      });
+    }
+
+    itemsList.addEventListener('change', (event) => {
+      if (!event.target.classList.contains('item-qty') && !event.target.classList.contains('item-price')) return;
+      ensureNextRowIfNeeded(event.target.closest('.item-row'));
+    });
+
+    // Load customer names for autocomplete
+    async function loadCustomers() {
+      try {
+        const response = await fetch('/api/customers');
+        const customers = await response.json();
+        const datalist = document.getElementById('customers_list');
+        datalist.innerHTML = customers
+          .map(name => `<option value="${name}"></option>`)
+          .join('');
+      } catch (error) {
+        console.error('Failed to load customers:', error);
+      }
+    }
+
+    // Load items for autocomplete and build price map
+    async function loadItems() {
+      try {
+        const response = await fetch('/api/items');
+        const itemsData = await response.json();
+        
+        // Fetch detailed items with prices
+        const itemsResponse = await fetch('/api/items-with-prices');
+        const itemsWithPrices = await itemsResponse.json();
+        
+        // Build price map
+        itemsWithPrices.forEach(item => {
+          itemPricesMap[item.description] = item.price;
+        });
+        
+        // Populate datalist
+        const datalist = document.getElementById('items_list');
+        datalist.innerHTML = itemsData
+          .map(desc => `<option value="${desc}"></option>`)
+          .join('');
+      } catch (error) {
+        console.error('Failed to load items:', error);
+      }
+    }
+
+    // Attach listeners to initial item inputs
+    attachItemListeners();
+    loadCustomers();
+    loadItems();
+  </script>
+
+  <nav class="floating-dock">
+    <a href="{{ url_for('index') }}" class="dock-item active" title="New Receipt">New Receipt</a>
+    <a href="{{ url_for('history') }}" class="dock-item" title="View Receipts">History</a>
+    <div class="dock-divider"></div>
+    <a href="{{ url_for('customers_list') }}" class="dock-item" title="Manage Customers">Customers</a>
+    <a href="{{ url_for('items_list') }}" class="dock-item" title="Manage Items">Items</a>
+  </nav>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

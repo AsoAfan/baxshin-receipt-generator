@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Items</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+  <meta name="theme-color" content="#0cb09b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+</head>
+<body>
+  <aside id="offline-banner" class="offline-banner no-print" hidden>
+    <p>You are offline. Showing cached content.</p>
+  </aside>
+
+  <main class="page page-form">
+    <section class="form-card">
+      <header class="hero">
+        <p class="eyebrow">Items</p>
+        <div class="hero-actions-row">
+          <h1>All Items</h1>
+          <a class="button primary" href="{{ url_for('add_item') }}">New Item</a>
+        </div>
+        <p class="sub">Manage and view receipts by item.</p>
+      </header>
+
+      {% if items and items|length > 0 %}
+        <div class="table-wrapper">
+          <table class="history-table manage-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Price (IQD)</th>
+                <th>Times Used</th>
+                <th>Last Used</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+                <tr>
+                  <td data-label="Description">{{ item.description }}</td>
+                  <td data-label="Price">{{ item.price|iqd }}</td>
+                  <td data-label="Times Used">{{ item.times_used }}</td>
+                  <td data-label="Last Used">{{ item.last_used }}</td>
+                  <td class="actions-cell" data-label="Actions">
+                    <a href="{{ url_for('item_receipts', item_desc=item.description) }}" class="button ghost" style="font-size: 0.8rem;">View</a>
+                    <a href="{{ url_for('edit_item', item_desc=item.description) }}" class="button ghost" style="font-size: 0.8rem; background: #e3f2fd; color: #1976d2;">Edit</a>
+                    <form method="post" action="{{ url_for('delete_item', item_desc=item.description) }}" style="display: inline;" onsubmit="return confirm('Delete this item?');">
+                      <button type="submit" class="button ghost" style="font-size: 0.8rem; background: #ffebee; color: #d32f2f; border-color: #ffcdd2;">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="empty-note">No items yet. Add your first item.</p>
+      {% endif %}
+
+    </section>
+  </main>
+
+  <nav class="floating-dock">
+    <a href="{{ url_for('index') }}" class="dock-item" title="New Receipt">New Receipt</a>
+    <a href="{{ url_for('history') }}" class="dock-item" title="View Receipts">History</a>
+    <div class="dock-divider"></div>
+    <a href="{{ url_for('customers_list') }}" class="dock-item" title="Manage Customers">Customers</a>
+    <a href="{{ url_for('items_list') }}" class="dock-item active" title="Manage Items">Items</a>
+  </nav>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

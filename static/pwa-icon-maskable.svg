@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Receipt app maskable icon">
+  <rect width="512" height="512" fill="#0a9f8c"/>
+  <rect x="112" y="80" width="288" height="352" rx="32" fill="#f7fbff"/>
+  <path d="M168 170h176M168 226h176M168 282h128" stroke="#0a9f8c" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="320" cy="336" r="56" fill="#0c8f7e"/>
+  <path d="M296 336h48M320 312v48" stroke="#f7fbff" stroke-width="16" stroke-linecap="round"/>
+</svg>

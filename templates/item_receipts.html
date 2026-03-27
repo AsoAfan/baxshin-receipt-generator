@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipts - {{ item_description }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+  <meta name="theme-color" content="#0cb09b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+</head>
+<body>
+  <aside id="offline-banner" class="offline-banner no-print" hidden>
+    <p>You are offline. Showing cached content.</p>
+  </aside>
+
+  <main class="page page-form">
+    <section class="form-card">
+      <header class="hero">
+        <p class="eyebrow">Item Receipts</p>
+        <h1>{{ item_description }}</h1>
+        <p class="sub">All receipts containing this item.</p>
+      </header>
+
+      {% if receipts %}
+        <div class="table-wrapper">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Receipt Number</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Total</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for receipt in receipts %}
+                <tr>
+                  <td><a href="{{ url_for('view_receipt', receipt_id=receipt.id) }}">{{ receipt.receipt_number }}</a></td>
+                  <td><a href="{{ url_for('customer_receipts', name=receipt.customer_name) }}">{{ receipt.customer_name }}</a></td>
+                  <td>{{ receipt.invoice_date }}</td>
+                  <td>{{ receipt.total|iqd }}</td>
+                  <td><a href="{{ url_for('view_receipt', receipt_id=receipt.id) }}" class="button ghost" style="font-size: 0.8rem;">View</a></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="sub" style="margin-top: 2rem;">No receipts found containing this item.</p>
+      {% endif %}
+
+      <div class="actions" style="margin-top: 2rem;">
+        <a class="button ghost" href="{{ url_for('items_list') }}">Back to Items</a>
+        <a class="button ghost" href="{{ url_for('history') }}">All Receipts</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="floating-dock">
+    <a href="{{ url_for('index') }}" class="dock-item" title="New Receipt">New Receipt</a>
+    <a href="{{ url_for('history') }}" class="dock-item" title="View Receipts">History</a>
+    <div class="dock-divider"></div>
+    <a href="{{ url_for('customers_list') }}" class="dock-item" title="Manage Customers">Customers</a>
+    <a href="{{ url_for('items_list') }}" class="dock-item active" title="Manage Items">Items</a>
+  </nav>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

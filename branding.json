@@ -1,0 +1,20 @@
+{
+  "clinic_name": "Baxshin Dental Center",
+  "clinic_tagline": "Your smile, our passion",
+  "document_title_small": "BAXSHIN",
+  "document_title_big": "INVOICE",
+  "logo_url": "img/logo.jpg",
+  "address_lines": [
+    "Sulaymaniyah - Malik mahmood road",
+    "baxshindentalcenter@gmail.com",
+    "+964 772 999 5742",
+    "https://baxshin.org"
+  ],
+  "social_media": {
+    "facebook": "@Baxshin dental center",
+    "instagram": "@baxshin_dental_center",
+    "whatsapp": "+964 772 999 5742"
+  },
+  "terms_title": "",
+  "terms_text": ""
+}
