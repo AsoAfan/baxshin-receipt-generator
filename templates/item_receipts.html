@@ -29,6 +29,9 @@
       </header>
 
       {% if receipts %}
+        {% if pagination %}
+          <p class="table-total">Total receipts: {{ pagination.total }}</p>
+        {% endif %}
         <div class="table-wrapper">
           <table class="history-table">
             <thead>
@@ -53,6 +56,21 @@
             </tbody>
           </table>
         </div>
+        {% if pagination %}
+          <div class="pagination-bar" aria-label="Item receipts pagination">
+            {% if pagination.has_prev %}
+              <a class="button ghost" href="{{ url_for('item_receipts', item_desc=item_description, page=pagination.prev_page, per_page=pagination.per_page) }}">Previous</a>
+            {% else %}
+              <span class="button ghost" aria-disabled="true">Previous</span>
+            {% endif %}
+            <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+            {% if pagination.has_next %}
+              <a class="button ghost" href="{{ url_for('item_receipts', item_desc=item_description, page=pagination.next_page, per_page=pagination.per_page) }}">Next</a>
+            {% else %}
+              <span class="button ghost" aria-disabled="true">Next</span>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <p class="sub" style="margin-top: 2rem;">No receipts found containing this item.</p>
       {% endif %}

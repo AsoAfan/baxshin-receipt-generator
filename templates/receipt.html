@@ -125,6 +125,10 @@
     </article>
 
     <div class="receipt-actions-bar no-print">
+      <a href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}" class="button ghost">Edit Receipt</a>
+      <form method="post" action="{{ url_for('delete_receipt', receipt_id=receipt.id) }}" onsubmit="return confirm('Delete this receipt permanently? This cannot be undone.');">
+        <button class="button remove" type="submit">Delete Receipt</button>
+      </form>
       <a href="{{ url_for('index') }}" class="button ghost">New Receipt</a>
       <a href="{{ url_for('history') }}" class="button ghost">History</a>
       <button class="button ghost" id="export-png" type="button">Export PNG</button>

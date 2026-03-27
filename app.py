@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 from datetime import date, datetime
+from math import ceil
 from pathlib import Path
 from typing import Any
 
@@ -201,6 +202,39 @@ def parse_int(value: str, default: int = 1) -> int:
     if not text:
         return default
     return int(text)
+
+
+def get_pagination_params(default_per_page: int = 20, max_per_page: int = 100) -> tuple[int, int]:
+    page_raw = request.args.get("page", "1")
+    per_page_raw = request.args.get("per_page", str(default_per_page))
+
+    try:
+        page = max(1, int(page_raw))
+    except ValueError:
+        page = 1
+
+    try:
+        per_page = int(per_page_raw)
+    except ValueError:
+        per_page = default_per_page
+
+    per_page = max(1, min(max_per_page, per_page))
+    return page, per_page
+
+
+def make_pagination(total: int, page: int, per_page: int) -> dict[str, Any]:
+    total_pages = max(1, ceil(total / per_page)) if total > 0 else 1
+    page = max(1, min(page, total_pages))
+    return {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+        "prev_page": page - 1,
+        "next_page": page + 1,
+    }
 
 
 def make_receipt_number(receipt_id: int) -> str:
@@ -403,49 +437,98 @@ def get_items_with_prices():
 
 @app.route("/customers")
 def customers_list():
+    page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+        pagination = make_pagination(total, page, per_page)
+        offset = (pagination["page"] - 1) * pagination["per_page"]
         customers = conn.execute(
-            "SELECT name, times_used, last_used FROM customers ORDER BY last_used DESC, times_used DESC"
+            """
+            SELECT name, times_used, last_used
+            FROM customers
+            ORDER BY last_used DESC, times_used DESC
+            LIMIT ? OFFSET ?
+            """,
+            (pagination["per_page"], offset),
         ).fetchall()
-    return render_template("customers.html", customers=customers)
+    return render_template("customers.html", customers=customers, pagination=pagination)
 
 
 @app.route("/customer/<name>/receipts")
 def customer_receipts(name: str):
+    page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
-        receipts = conn.execute(
-            "SELECT id, receipt_number, invoice_date, total FROM receipts WHERE customer_name = ? ORDER BY created_at DESC",
+        total = conn.execute(
+            "SELECT COUNT(*) FROM receipts WHERE customer_name = ?",
             (name,),
+        ).fetchone()[0]
+        pagination = make_pagination(total, page, per_page)
+        offset = (pagination["page"] - 1) * pagination["per_page"]
+        receipts = conn.execute(
+            """
+            SELECT id, receipt_number, invoice_date, total
+            FROM receipts
+            WHERE customer_name = ?
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (name, pagination["per_page"], offset),
         ).fetchall()
-    return render_template("customer_receipts.html", customer_name=name, receipts=receipts)
+    return render_template(
+        "customer_receipts.html",
+        customer_name=name,
+        receipts=receipts,
+        pagination=pagination,
+    )
 
 
 @app.route("/items")
 def items_list():
+    page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+        pagination = make_pagination(total, page, per_page)
+        offset = (pagination["page"] - 1) * pagination["per_page"]
         items = conn.execute(
-            "SELECT description, price, times_used, last_used FROM items ORDER BY last_used DESC, times_used DESC"
+            """
+            SELECT description, price, times_used, last_used
+            FROM items
+            ORDER BY last_used DESC, times_used DESC
+            LIMIT ? OFFSET ?
+            """,
+            (pagination["per_page"], offset),
         ).fetchall()
-    return render_template("items.html", items=items)
+    return render_template("items.html", items=items, pagination=pagination)
 
 
 @app.route("/item/<item_desc>/receipts")
 def item_receipts(item_desc: str):
+    page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
-        receipt_ids = conn.execute(
-            "SELECT DISTINCT receipt_id FROM receipt_items WHERE description = ? ORDER BY receipt_id DESC",
+        total = conn.execute(
+            "SELECT COUNT(DISTINCT receipt_id) FROM receipt_items WHERE description = ?",
             (item_desc,),
+        ).fetchone()[0]
+        pagination = make_pagination(total, page, per_page)
+        offset = (pagination["page"] - 1) * pagination["per_page"]
+
+        receipts = conn.execute(
+            """
+            SELECT DISTINCT r.id, r.receipt_number, r.invoice_date, r.total, r.customer_name
+            FROM receipts r
+            INNER JOIN receipt_items ri ON r.id = ri.receipt_id
+            WHERE ri.description = ?
+            ORDER BY r.id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (item_desc, pagination["per_page"], offset),
         ).fetchall()
-        
-        receipts = []
-        for (receipt_id,) in receipt_ids:
-            receipt = conn.execute(
-                "SELECT id, receipt_number, invoice_date, total, customer_name FROM receipts WHERE id = ?",
-                (receipt_id,),
-            ).fetchone()
-            if receipt:
-                receipts.append(receipt)
-    return render_template("item_receipts.html", item_description=item_desc, receipts=receipts)
+    return render_template(
+        "item_receipts.html",
+        item_description=item_desc,
+        receipts=receipts,
+        pagination=pagination,
+    )
 
 
 # Customer management routes
@@ -570,6 +653,131 @@ def view_receipt(receipt_id: int) -> str:
     return render_template("receipt.html", receipt=receipt, items=items, branding=branding, logo_src=logo_src)
 
 
+@app.route("/receipt/<int:receipt_id>/edit", methods=["GET", "POST"])
+def edit_receipt(receipt_id: int) -> str:
+    with get_db() as conn:
+        receipt = conn.execute(
+            "SELECT * FROM receipts WHERE id = ?",
+            (receipt_id,),
+        ).fetchone()
+
+    if receipt is None:
+        return "Receipt not found", 404
+
+    if request.method == "POST":
+        customer_name = (request.form.get("customer_name") or "").strip()
+        invoice_date = (request.form.get("invoice_date") or str(date.today())).strip()
+        notes = (request.form.get("notes") or "").strip()
+
+        if not customer_name:
+            flash("Customer name is required.", "error")
+            return redirect(url_for("edit_receipt", receipt_id=receipt_id))
+
+        descriptions = request.form.getlist("description[]")
+        quantities = request.form.getlist("qty[]")
+        prices = request.form.getlist("price[]")
+
+        items: list[dict[str, Any]] = []
+        for description, qty_raw, price_raw in zip(descriptions, quantities, prices):
+            description = (description or "").strip()
+            if not description:
+                continue
+            try:
+                qty = parse_int(qty_raw, 1)
+                price = parse_float(price_raw, 0.0)
+            except ValueError:
+                flash("Please use a whole number for quantity and a valid number for price.", "error")
+                return redirect(url_for("edit_receipt", receipt_id=receipt_id))
+
+            if qty <= 0:
+                flash("Quantity must be at least 1.", "error")
+                return redirect(url_for("edit_receipt", receipt_id=receipt_id))
+
+            line_total = round(qty * price, 2)
+            items.append(
+                {
+                    "description": description,
+                    "qty": qty,
+                    "price": round(price, 0),
+                    "line_total": line_total,
+                }
+            )
+
+        if not items:
+            flash("Please add at least one item.", "error")
+            return redirect(url_for("edit_receipt", receipt_id=receipt_id))
+
+        subtotal = round(sum(item["line_total"] for item in items), 2)
+        tax_rate = float(receipt["tax_rate"] or 0)
+        tax = round(subtotal * tax_rate, 2)
+        total = round(subtotal + tax, 2)
+        used_at = datetime.utcnow().isoformat(timespec="seconds")
+
+        with get_db() as conn:
+            conn.execute(
+                """
+                UPDATE receipts
+                SET customer_name = ?, invoice_date = ?, subtotal = ?, tax = ?, total = ?, notes = ?
+                WHERE id = ?
+                """,
+                (customer_name, invoice_date, subtotal, tax, total, notes, receipt_id),
+            )
+
+            conn.execute("DELETE FROM receipt_items WHERE receipt_id = ?", (receipt_id,))
+
+            conn.executemany(
+                """
+                INSERT INTO receipt_items (receipt_id, description, qty, price, line_total)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        receipt_id,
+                        item["description"],
+                        item["qty"],
+                        item["price"],
+                        item["line_total"],
+                    )
+                    for item in items
+                ],
+            )
+
+            conn.execute(
+                """
+                INSERT INTO customers (name, created_at, last_used, times_used)
+                VALUES (?, ?, ?, 1)
+                ON CONFLICT(name) DO UPDATE SET
+                    last_used = excluded.last_used,
+                    times_used = times_used + 1
+                """,
+                (customer_name, used_at, used_at),
+            )
+
+            for item in items:
+                conn.execute(
+                    """
+                    INSERT INTO items (description, price, created_at, last_used, times_used)
+                    VALUES (?, ?, ?, ?, 1)
+                    ON CONFLICT(description) DO UPDATE SET
+                        last_used = excluded.last_used,
+                        times_used = times_used + 1,
+                        price = excluded.price
+                    """,
+                    (item["description"], item["price"], used_at, used_at),
+                )
+
+        flash("Receipt updated successfully.", "success")
+        return redirect(url_for("view_receipt", receipt_id=receipt_id))
+
+    with get_db() as conn:
+        items = conn.execute(
+            "SELECT description, qty, price, line_total FROM receipt_items WHERE receipt_id = ? ORDER BY id",
+            (receipt_id,),
+        ).fetchall()
+
+    return render_template("edit_receipt.html", receipt=receipt, items=items)
+
+
 @app.route("/img/<path:filename>")
 def serve_img(filename: str):
     return send_from_directory(BASE_DIR / "img", filename)
@@ -593,17 +801,41 @@ def serve_local_logo():
 
 @app.route("/history")
 def history() -> str:
+    page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0]
+        pagination = make_pagination(total, page, per_page)
+        offset = (pagination["page"] - 1) * pagination["per_page"]
         rows = conn.execute(
             """
             SELECT id, receipt_number, customer_name, invoice_date, total
             FROM receipts
             ORDER BY id DESC
-            LIMIT 30
+            LIMIT ? OFFSET ?
             """
+            ,
+            (pagination["per_page"], offset),
         ).fetchall()
 
-    return render_template("history.html", receipts=rows)
+    return render_template("history.html", receipts=rows, pagination=pagination)
+
+
+@app.route("/receipt/<int:receipt_id>/delete", methods=["POST"])
+def delete_receipt(receipt_id: int):
+    with get_db() as conn:
+        receipt = conn.execute(
+            "SELECT receipt_number FROM receipts WHERE id = ?",
+            (receipt_id,),
+        ).fetchone()
+
+        if receipt is None:
+            flash("Receipt not found.", "error")
+            return redirect(url_for("history"))
+
+        conn.execute("DELETE FROM receipts WHERE id = ?", (receipt_id,))
+
+    flash(f"Receipt {receipt['receipt_number']} deleted successfully.", "success")
+    return redirect(url_for("history"))
 
 
 @app.route("/offline")

@@ -32,6 +32,9 @@
       </header>
 
       {% if items and items|length > 0 %}
+        {% if pagination %}
+          <p class="table-total">Total items: {{ pagination.total }}</p>
+        {% endif %}
         <div class="table-wrapper">
           <table class="history-table manage-table">
             <thead>
@@ -62,6 +65,21 @@
             </tbody>
           </table>
         </div>
+        {% if pagination %}
+          <div class="pagination-bar" aria-label="Items pagination">
+            {% if pagination.has_prev %}
+              <a class="button ghost" href="{{ url_for('items_list', page=pagination.prev_page, per_page=pagination.per_page) }}">Previous</a>
+            {% else %}
+              <span class="button ghost" aria-disabled="true">Previous</span>
+            {% endif %}
+            <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+            {% if pagination.has_next %}
+              <a class="button ghost" href="{{ url_for('items_list', page=pagination.next_page, per_page=pagination.per_page) }}">Next</a>
+            {% else %}
+              <span class="button ghost" aria-disabled="true">Next</span>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <p class="empty-note">No items yet. Add your first item.</p>
       {% endif %}

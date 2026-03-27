@@ -33,6 +33,9 @@
     </header>
 
       {% if customers and customers|length > 0 %}
+        {% if pagination %}
+          <p class="table-total">Total customers: {{ pagination.total }}</p>
+        {% endif %}
         <div class="table-wrapper">
           <table class="history-table manage-table">
             <thead>
@@ -60,6 +63,21 @@
             </tbody>
           </table>
         </div>
+        {% if pagination %}
+          <div class="pagination-bar" aria-label="Customers pagination">
+            {% if pagination.has_prev %}
+              <a class="button ghost" href="{{ url_for('customers_list', page=pagination.prev_page, per_page=pagination.per_page) }}">Previous</a>
+            {% else %}
+              <span class="button ghost" aria-disabled="true">Previous</span>
+            {% endif %}
+            <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+            {% if pagination.has_next %}
+              <a class="button ghost" href="{{ url_for('customers_list', page=pagination.next_page, per_page=pagination.per_page) }}">Next</a>
+            {% else %}
+              <span class="button ghost" aria-disabled="true">Next</span>
+            {% endif %}
+          </div>
+        {% endif %}
       {% else %}
         <p class="empty-note">No customers yet. Add your first customer.</p>
       {% endif %}

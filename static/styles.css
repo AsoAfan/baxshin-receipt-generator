@@ -211,12 +211,15 @@ input:focus {
 }
 
 .button.remove {
-  background: #ecf8f5;
-  color: #2c7369;
+  background: #ffebee;
+  color: #d32f2f;
+  border: 1px solid #ffcdd2;
   min-width: 42px;
 }
 
 .remove-item-btn {
+  background: #ecf8f5;
+  color: #2c7369;
   width: 42px;
   min-width: 42px;
   padding: 0;
@@ -626,6 +629,33 @@ table {
   margin: 0;
 }
 
+.pagination-bar {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-total {
+  margin: 6px 0 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #2f7a70;
+}
+
+.pagination-info {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #2f7a70;
+}
+
+.pagination-bar .button[aria-disabled="true"] {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .empty-note {
   text-align: center;
   color: var(--ink-soft);
@@ -883,6 +913,11 @@ tbody tr:nth-child(even) {
     border: 1px solid #cfe9e3;
     border-radius: 12px;
     padding: 8px 10px;
+    margin-bottom: 10px;
+  }
+
+  .manage-table tbody tr:last-child {
+    margin-bottom: 0;
   }
 
   .manage-table tbody tr:nth-child(even) {

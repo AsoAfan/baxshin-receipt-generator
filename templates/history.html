@@ -32,6 +32,10 @@
         <a href="{{ url_for('items_list') }}" class="button ghost">Manage Items</a>
       </div>
 
+      {% if pagination %}
+        <p class="table-total">Total receipts: {{ pagination.total }}</p>
+      {% endif %}
+
       <table>
         <thead>
           <tr>
@@ -39,6 +43,7 @@
             <th>Name</th>
             <th>Date</th>
             <th>Total</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -48,14 +53,36 @@
               <td>{{ row.customer_name }}</td>
               <td>{{ row.invoice_date }}</td>
               <td>{{ row.total|iqd }}</td>
+              <td>
+                <a class="button ghost" href="{{ url_for('edit_receipt', receipt_id=row.id) }}">Edit</a>
+                <form method="post" action="{{ url_for('delete_receipt', receipt_id=row.id) }}" style="display:inline-block;" onsubmit="return confirm('Delete this receipt permanently? This cannot be undone.');">
+                  <button class="button remove" type="submit">Delete</button>
+                </form>
+              </td>
             </tr>
           {% else %}
             <tr>
-              <td colspan="4">No receipts yet.</td>
+              <td colspan="5">No receipts yet.</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
+
+      {% if pagination %}
+        <div class="pagination-bar" aria-label="History pagination">
+          {% if pagination.has_prev %}
+            <a class="button ghost" href="{{ url_for('history', page=pagination.prev_page, per_page=pagination.per_page) }}">Previous</a>
+          {% else %}
+            <span class="button ghost" aria-disabled="true">Previous</span>
+          {% endif %}
+          <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+          {% if pagination.has_next %}
+            <a class="button ghost" href="{{ url_for('history', page=pagination.next_page, per_page=pagination.per_page) }}">Next</a>
+          {% else %}
+            <span class="button ghost" aria-disabled="true">Next</span>
+          {% endif %}
+        </div>
+      {% endif %}
     </section>
   </main>
 
