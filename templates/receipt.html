@@ -159,20 +159,14 @@
         exportPdfButton.textContent = isBusy ? 'Exporting...' : 'Export PDF';
     };
 
-    const captureReceipt = async (excludeFooter = false) => {
-        const originalDisplay = receiptFooter.style.display;
-        if (excludeFooter) receiptFooter.style.display = 'none';
-        try {
-            return await html2canvas(receiptCanvas, {
-                scale: 2,
-                backgroundColor: '#f9fcff',
-                useCORS: true,
-                allowTaint: true,
-                logging: false,
-            });
-        } finally {
-            if (excludeFooter) receiptFooter.style.display = originalDisplay;
-        }
+    const captureReceipt = async () => {
+        return html2canvas(receiptCanvas, {
+            scale: 2,
+            backgroundColor: '#f9fcff',
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+        });
     };
 
     const captureNode = async (node) => {
@@ -236,67 +230,51 @@
     exportPdfButton.addEventListener('click', async () => {
         try {
             setBusy(true);
-            
-            // Capture footer separately to repeat it on every page
-            const footerCanvas = await captureNode(receiptFooter);
-            // Capture main content without the footer
-            const contentCanvas = await captureReceipt(true);
+            const fullCanvas = await captureReceipt();
 
             const {jsPDF} = window.jspdf;
             const pdf = new jsPDF({orientation: 'portrait', unit: 'mm', format: 'a4'});
             const pageWidthMm = 210;
             const pageHeightMm = 297;
 
-            const footerHeightMm = (footerCanvas.height * pageWidthMm) / footerCanvas.width;
-            const contentPageHeightMm = pageHeightMm - footerHeightMm;
-            
-            // Slice height in pixels based on content area
-            const sliceHeightPx = Math.floor((contentPageHeightMm * contentCanvas.width) / pageWidthMm);
-            
+            // Slice the full receipt canvas into A4-height segments to keep all decorative layers.
+            const sliceHeightPx = Math.floor((pageHeightMm * fullCanvas.width) / pageWidthMm);
+            const minRemainderPx = Math.ceil((2 * fullCanvas.width) / pageWidthMm);
+
             let yOffsetPx = 0;
             let isFirstPage = true;
 
-            while (yOffsetPx < contentCanvas.height) {
-                const remainingPx = contentCanvas.height - yOffsetPx;
-                // If it's a tiny sliver on a new page, don't bother (might be just padding)
-                if (!isFirstPage && remainingPx < (contentCanvas.width * 5 / pageWidthMm)) {
+            while (yOffsetPx < fullCanvas.height) {
+                const remainingPx = fullCanvas.height - yOffsetPx;
+                if (!isFirstPage && remainingPx <= minRemainderPx) {
                     break;
                 }
+                const currentSlicePx = Math.min(sliceHeightPx, remainingPx);
 
                 if (!isFirstPage) {
                     pdf.addPage();
                 }
 
-                const currentSlicePx = Math.min(sliceHeightPx, remainingPx);
                 const pageSliceCanvas = document.createElement('canvas');
-                pageSliceCanvas.width = contentCanvas.width;
+                pageSliceCanvas.width = fullCanvas.width;
                 pageSliceCanvas.height = currentSlicePx;
 
                 const ctx = pageSliceCanvas.getContext('2d');
                 ctx.drawImage(
-                    contentCanvas,
+                    fullCanvas,
                     0,
                     yOffsetPx,
-                    contentCanvas.width,
+                    fullCanvas.width,
                     currentSlicePx,
                     0,
                     0,
-                    contentCanvas.width,
+                    fullCanvas.width,
                     currentSlicePx
                 );
 
                 const sliceImageData = pageSliceCanvas.toDataURL('image/png');
-                const sliceHeightMm = (currentSlicePx * pageWidthMm) / contentCanvas.width;
-                
-                // Add content slice
+                const sliceHeightMm = (currentSlicePx * pageWidthMm) / fullCanvas.width;
                 pdf.addImage(sliceImageData, 'PNG', 0, 0, pageWidthMm, sliceHeightMm);
-                
-                // Add footer at the bottom of EVERY page
-                const footerImageData = footerCanvas.toDataURL('image/png');
-                pdf.addImage(footerImageData, 'PNG', 0, pageHeightMm - footerHeightMm, pageWidthMm, footerHeightMm);
-                
-                // Optional: add links to footer on every page
-                addFooterLinks(pdf, pageHeightMm - footerHeightMm, footerHeightMm);
 
                 yOffsetPx += currentSlicePx;
                 isFirstPage = false;
