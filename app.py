@@ -430,8 +430,9 @@ def settings() -> str:
     
     app_config = load_app_config()
     lan_ip = get_lan_ip()
+    app_port = int(os.getenv("RECEIPT_PORT", "81"))
     
-    return render_template("settings.html", lan_ip=lan_ip, app_config=app_config)
+    return render_template("settings.html", lan_ip=lan_ip, app_port=app_port, app_config=app_config)
 
 
 @app.route("/", methods=["GET", "POST"])
