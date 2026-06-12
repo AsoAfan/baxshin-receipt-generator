@@ -1,292 +1,384 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{ receipt.receipt_number }}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Nunito+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
-  <meta name="theme-color" content="#0cb09b" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{{ receipt.receipt_number }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Nunito+Sans:wght@400;500;600;700&display=swap"
+          rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"/>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}"/>
+    <meta name="theme-color" content="#0cb09b"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body class="receipt-preview-body">
-  <aside id="offline-banner" class="offline-banner no-print" hidden>
+<aside id="offline-banner" class="offline-banner no-print" hidden>
     <p>You are offline. Showing cached content.</p>
-  </aside>
+</aside>
 
-  <main class="receipt-preview-wrap">
+<main class="receipt-preview-wrap">
     <article class="receipt-canvas" aria-label="Printable receipt">
-      <img class="deco-wave-top" src="{{ url_for('serve_img', filename='g4865.png') }}" alt="" />
-      <img class="deco-tools" src="{{ url_for('serve_img', filename='g4863.png') }}" alt="" />
+        <img class="deco-wave-top" src="{{ url_for('serve_img', filename='g4865.png') }}" alt=""/>
+        <img class="deco-tools" src="{{ url_for('serve_img', filename='g4863.png') }}" alt=""/>
 
-      <section class="receipt-main">
-        <header class="brand-head">
-          <div class="brand-row">
-            {% if logo_src %}
-              <img class="brand-logo" src="{{ logo_src }}" alt="Logo" />
-            {% else %}
-              <div class="brand-logo-fallback" aria-hidden="true"></div>
-            {% endif %}
+        <section class="receipt-main">
+            <header class="brand-head">
+                <div class="brand-row">
+                    {% if logo_src %}
+                        <img class="brand-logo" src="{{ logo_src }}" alt="Logo"/>
+                    {% else %}
+                        <div class="brand-logo-fallback" aria-hidden="true"></div>
+                    {% endif %}
 
-            <div class="brand-copy">
-              <p class="brand-name">{{ branding.clinic_name }}</p>
-              <p class="brand-tagline">{{ branding.clinic_tagline }}</p>
+                    <div class="brand-copy">
+                        <p class="brand-name">{{ branding.clinic_name }}</p>
+                        <p class="brand-tagline">{{ branding.clinic_tagline }}</p>
+                    </div>
+                </div>
+
+                <div class="doc-title">
+                    <p>{{ branding.document_title_small }}</p>
+                    <h1>{{ branding.document_title_big }}</h1>
+                </div>
+
+                <div class="invoice-meta-grid">
+                    <p>Invoice number</p>
+                    <p>: {{ receipt.receipt_number }}</p>
+                    <p>Customer</p>
+                    <p>: <strong>{{ receipt.customer_name }}</strong></p>
+                    <p>Date</p>
+                    <p>: {{ receipt.invoice_date }}</p>
+                </div>
+            </header>
+
+            <div class="invoice-table-container">
+                <table class="invoice-table">
+                    <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Description</th>
+                        <th>Price</th>
+                        <th>Qty.</th>
+                        <th>Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in items %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ item.description }}</td>
+                            <td>{{ item.price|iqd }}</td>
+                            <td>{{ item.qty|int }}</td>
+                            <td>{{ item.line_total|iqd }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
-          </div>
 
-          <div class="doc-title">
-            <p>{{ branding.document_title_small }}</p>
-            <h1>{{ branding.document_title_big }}</h1>
-          </div>
+            <section class="receipt-lower">
+                <div class="terms-box">
+                    <h2>{{ branding.terms_title }}</h2>
+                    <p>{{ branding.terms_text }}</p>
+                    {% if receipt.notes %}
+                        <p class="notes-inline">{{ receipt.notes }}</p>
+                    {% endif %}
+                </div>
 
-          <div class="invoice-meta-grid">
-            <p>Invoice number</p>
-            <p>: {{ receipt.receipt_number }}</p>
-            <p>Date</p>
-            <p>: {{ receipt.invoice_date }}</p>
-          </div>
-        </header>
+                <div class="totals-box">
+                    <p><span>Subtotal</span><strong>{{ receipt.subtotal|iqd }}</strong></p>
+                    <p class="grand"><span>Total</span><strong>{{ receipt.total|iqd }}</strong></p>
+                </div>
+            </section>
 
-        <table class="invoice-table">
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>Description</th>
-              <th>Price</th>
-              <th>Qty.</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in items %}
-              <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ item.description }}</td>
-                <td>{{ item.price|iqd }}</td>
-                <td>{{ item.qty|int }}</td>
-                <td>{{ item.line_total|iqd }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-
-        <section class="receipt-lower">
-          <div class="terms-box">
-            <h2>{{ branding.terms_title }}</h2>
-            <p>{{ branding.terms_text }}</p>
-            {% if receipt.notes %}
-              <p class="notes-inline">{{ receipt.notes }}</p>
-            {% endif %}
-          </div>
-
-          <div class="totals-box">
-            <p><span>Subtotal</span><strong>{{ receipt.subtotal|iqd }}</strong></p>
-            <p class="grand"><span>Total</span><strong>{{ receipt.total|iqd }}</strong></p>
-          </div>
+            <img class="deco-wave-mid" src="{{ url_for('serve_img', filename='g4861.png') }}" alt=""/>
         </section>
 
-        <img class="deco-wave-mid" src="{{ url_for('serve_img', filename='g4861.png') }}" alt="" />
-      </section>
+        <footer class="receipt-foot">
+            <!-- <img class="deco-foot" src="{{ url_for('serve_img', filename='clean.png') }}" alt="" /> -->
 
-      <footer class="receipt-foot">
-        <!-- <img class="deco-foot" src="{{ url_for('serve_img', filename='clean.png') }}" alt="" /> -->
+            <div class="foot-address">
+                {% for line in branding.address_lines %}
+                    {% if line and line|trim %}
+                        <p>{{ line }}</p>
+                    {% endif %}
+                {% endfor %}
+            </div>
 
-        <div class="foot-address">
-          {% for line in branding.address_lines %}
-            {% if line and line|trim %}
-              <p>{{ line }}</p>
+            {% if branding.social_media and (branding.social_media.facebook or branding.social_media.instagram or branding.social_media.whatsapp) %}
+                <div class="foot-socials">
+                    {% if branding.social_media.facebook and branding.social_media.facebook|trim %}
+                        <p class="social-item social-facebook"><i
+                                class="fab fa-facebook-f"></i><span>{{ branding.social_media.facebook }}</span></p>
+                    {% endif %}
+                    {% if branding.social_media.instagram and branding.social_media.instagram|trim %}
+                        <p class="social-item social-instagram"><i
+                                class="fab fa-instagram"></i><span>{{ branding.social_media.instagram }}</span></p>
+                    {% endif %}
+                    {% if branding.social_media.whatsapp and branding.social_media.whatsapp|trim %}
+                        <p class="social-item social-whatsapp"><i
+                                class="fab fa-whatsapp"></i><span>{{ branding.social_media.whatsapp }}</span></p>
+                    {% endif %}
+                </div>
             {% endif %}
-          {% endfor %}
-        </div>
+        </footer>
 
-        {% if branding.social_media and (branding.social_media.facebook or branding.social_media.instagram or branding.social_media.whatsapp) %}
-          <div class="foot-socials">
-            {% if branding.social_media.facebook and branding.social_media.facebook|trim %}
-              <p class="social-item social-facebook"><i class="fab fa-facebook-f"></i><span>{{ branding.social_media.facebook }}</span></p>
-            {% endif %}
-            {% if branding.social_media.instagram and branding.social_media.instagram|trim %}
-              <p class="social-item social-instagram"><i class="fab fa-instagram"></i><span>{{ branding.social_media.instagram }}</span></p>
-            {% endif %}
-            {% if branding.social_media.whatsapp and branding.social_media.whatsapp|trim %}
-              <p class="social-item social-whatsapp"><i class="fab fa-whatsapp"></i><span>{{ branding.social_media.whatsapp }}</span></p>
-            {% endif %}
-          </div>
-        {% endif %}
-      </footer>
+        <footer class="receipt-foot-simple" style="display: none;">
+            <p>Baxshin hospital</p>
+        </footer>
     </article>
 
     <div class="receipt-actions-bar no-print">
-      <a href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}" class="button ghost">Edit Receipt</a>
-      <form method="post" action="{{ url_for('delete_receipt', receipt_id=receipt.id) }}" onsubmit="return confirm('Delete this receipt permanently? This cannot be undone.');">
-        <button class="button remove" type="submit">Delete Receipt</button>
-      </form>
-      <a href="{{ url_for('index') }}" class="button ghost">New Receipt</a>
-      <a href="{{ url_for('history') }}" class="button ghost">History</a>
-      <button class="button ghost" id="export-png" type="button">Export PNG</button>
-      <button class="button primary" id="export-pdf" type="button">Export PDF</button>
+        <a href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}" class="button ghost">Edit Receipt</a>
+        <form method="post" action="{{ url_for('delete_receipt', receipt_id=receipt.id) }}"
+              onsubmit="return confirm('Delete this receipt permanently? This cannot be undone.');">
+            <button class="button remove" type="submit">Delete Receipt</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="button ghost">New Receipt</a>
+        <a href="{{ url_for('history') }}" class="button ghost">History</a>
+        <button class="button ghost" id="export-png" type="button">Export PNG</button>
+        <button class="button primary" id="export-pdf" type="button">Export PDF</button>
     </div>
-  </main>
+</main>
 
-  <script>
+<script>
     const receiptCanvas = document.querySelector('.receipt-canvas');
     const receiptMain = document.querySelector('.receipt-main');
     const receiptFooter = document.querySelector('.receipt-foot');
+    const receiptFooterSimple = document.querySelector('.receipt-foot-simple');
     const exportPngButton = document.getElementById('export-png');
     const exportPdfButton = document.getElementById('export-pdf');
     const fileBaseName = '{{ receipt.receipt_number }}'.replace(/\s+/g, '-').toLowerCase();
     const addressLines = JSON.parse('{{ branding.address_lines|tojson|safe }}');
 
     const setBusy = (isBusy) => {
-      exportPngButton.disabled = isBusy;
-      exportPdfButton.disabled = isBusy;
-      exportPngButton.textContent = isBusy ? 'Exporting...' : 'Export PNG';
-      exportPdfButton.textContent = isBusy ? 'Exporting...' : 'Export PDF';
+        exportPngButton.disabled = isBusy;
+        exportPdfButton.disabled = isBusy;
+        exportPngButton.textContent = isBusy ? 'Exporting...' : 'Export PNG';
+        exportPdfButton.textContent = isBusy ? 'Exporting...' : 'Export PDF';
     };
 
-    const captureReceipt = async () => {
-      return html2canvas(receiptCanvas, {
-        scale: 2,
-        backgroundColor: '#f9fcff',
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-      });
+    const captureReceipt = async (excludeFooter = false) => {
+        const originalDisplay = receiptFooter.style.display;
+        const originalSimpleDisplay = receiptFooterSimple.style.display;
+        
+        if (excludeFooter) {
+            receiptFooter.style.display = 'none';
+            receiptFooterSimple.style.display = 'none';
+        }
+        
+        try {
+            return await html2canvas(receiptCanvas, {
+                scale: 2,
+                backgroundColor: '#f9fcff',
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+            });
+        } finally {
+            if (excludeFooter) {
+                receiptFooter.style.display = originalDisplay;
+                receiptFooterSimple.style.display = originalSimpleDisplay;
+            }
+        }
     };
 
     const captureNode = async (node) => {
-      return html2canvas(node, {
-        scale: 2,
-        backgroundColor: '#f9fcff',
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-      });
+        const originalDisplay = node.style.display;
+        if (originalDisplay === 'none') {
+            node.style.display = 'flex';
+        }
+        try {
+            return await html2canvas(node, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+            });
+        } finally {
+            node.style.display = originalDisplay;
+        }
     };
 
     const makeWebUrl = (value) => {
-      const trimmed = (value || '').trim();
-      if (!trimmed) return '';
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-      if (trimmed.startsWith('www.')) return `https://${trimmed}`;
-      return '';
+        const trimmed = (value || '').trim();
+        if (!trimmed) return '';
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+        if (trimmed.startsWith('www.')) return `https://${trimmed}`;
+        return '';
     };
 
     const makePhoneUrl = (value) => {
-      const cleaned = (value || '').replace(/[^\d+]/g, '');
-      if (!cleaned || cleaned.replace(/\D/g, '').length < 7) return '';
-      return `tel:${cleaned}`;
+        const cleaned = (value || '').replace(/[^\d+]/g, '');
+        if (!cleaned || cleaned.replace(/\D/g, '').length < 7) return '';
+        return `tel:${cleaned}`;
     };
 
     const addFooterLinks = (pdf, footerTopMm, footerHeightMm) => {
-      const lines = (addressLines || []).filter((line) => (line || '').trim());
-      if (!lines.length) return;
+        const lines = (addressLines || []).filter((line) => (line || '').trim());
+        if (!lines.length) return;
 
-      const xMm = 8;
-      const wMm = 90;
-      const rowMm = Math.max(5, footerHeightMm * 0.1);
-      const startMm = footerTopMm + (footerHeightMm * 0.28);
+        const xMm = 8;
+        const wMm = 90;
+        const rowMm = Math.max(5, footerHeightMm * 0.1);
+        const startMm = footerTopMm + (footerHeightMm * 0.28);
 
-      lines.forEach((line, index) => {
-        const text = (line || '').trim();
-        const webUrl = makeWebUrl(text);
-        const phoneUrl = makePhoneUrl(text);
-        const targetUrl = webUrl || phoneUrl;
-        if (!targetUrl) return;
+        lines.forEach((line, index) => {
+            const text = (line || '').trim();
+            const webUrl = makeWebUrl(text);
+            const phoneUrl = makePhoneUrl(text);
+            const targetUrl = webUrl || phoneUrl;
+            if (!targetUrl) return;
 
-        const yMm = startMm + (index * rowMm);
-        pdf.link(xMm, yMm, wMm, rowMm, { url: targetUrl });
-      });
+            const yMm = startMm + (index * rowMm);
+            pdf.link(xMm, yMm, wMm, rowMm, {url: targetUrl});
+        });
     };
 
     exportPngButton.addEventListener('click', async () => {
-      try {
-        setBusy(true);
-        const canvas = await captureReceipt();
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png');
-        link.download = `${fileBaseName}.png`;
-        link.click();
-      } finally {
-        setBusy(false);
-      }
+        try {
+            setBusy(true);
+            const canvas = await captureReceipt();
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `${fileBaseName}.png`;
+            link.click();
+        } finally {
+            setBusy(false);
+        }
     });
 
     exportPdfButton.addEventListener('click', async () => {
-      try {
-        setBusy(true);
-        const fullCanvas = await captureReceipt();
+        try {
+            setBusy(true);
+            
+            // Capture footers separately
+            const footerCanvas = await captureNode(receiptFooter);
+            const footerSimpleCanvas = await captureNode(receiptFooterSimple);
+            // Capture main content without any footer
+            const contentCanvas = await captureReceipt(true);
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        const pageWidthMm = 210;
-        const pageHeightMm = 297;
+            const {jsPDF} = window.jspdf;
+            const pdf = new jsPDF({orientation: 'portrait', unit: 'mm', format: 'a4'});
+            const pageWidthMm = 210;
+            const pageHeightMm = 297;
 
-        // Slice the full receipt canvas into A4-height segments to keep all decorative layers.
-        const sliceHeightPx = Math.floor((pageHeightMm * fullCanvas.width) / pageWidthMm);
-        const minRemainderPx = Math.ceil((2 * fullCanvas.width) / pageWidthMm);
+            const footerHeightMm = (footerCanvas.height * pageWidthMm) / footerCanvas.width;
+            const footerSimpleHeightMm = (footerSimpleCanvas.height * pageWidthMm) / footerSimpleCanvas.width;
+            
+            // Add extra whitespace (margin) before footer in PDF
+            const pdfPaddingMm = 10;
+            
+            // We need to know where table rows are to avoid cutting them
+            const tableRows = Array.from(document.querySelectorAll('.invoice-table tbody tr'));
+            const tableRowsData = tableRows.map(row => {
+                const rect = row.getBoundingClientRect();
+                const canvasRect = receiptCanvas.getBoundingClientRect();
+                return {
+                    top: rect.top - canvasRect.top,
+                    bottom: rect.bottom - canvasRect.top,
+                    height: rect.height
+                };
+            });
 
-        let yOffsetPx = 0;
-        let isFirstPage = true;
+            let yOffsetPx = 0;
+            let isFirstPage = true;
 
-        while (yOffsetPx < fullCanvas.height) {
-          const remainingPx = fullCanvas.height - yOffsetPx;
-          if (!isFirstPage && remainingPx <= minRemainderPx) {
-            break;
-          }
-          const currentSlicePx = Math.min(sliceHeightPx, remainingPx);
+            // Pre-calculate pages to know which is the last one
+            const pages = [];
+            let tempYOffsetPx = 0;
+            
+            while (tempYOffsetPx < contentCanvas.height) {
+                const isLastEstimation = (tempYOffsetPx + ((pageHeightMm - footerHeightMm - pdfPaddingMm) * contentCanvas.width / pageWidthMm)) >= contentCanvas.height;
+                const currentFooterHeightMm = isLastEstimation ? footerHeightMm : footerSimpleHeightMm;
+                const availableHeightMm = pageHeightMm - currentFooterHeightMm - pdfPaddingMm;
+                const availableHeightPx = (availableHeightMm * contentCanvas.width) / pageWidthMm;
+                
+                let sliceHeightPx = Math.min(availableHeightPx, contentCanvas.height - tempYOffsetPx);
+                
+                // Try to find a row boundary if we are cutting through the table
+                const splitPointPx = tempYOffsetPx + sliceHeightPx;
+                const rowToAdjust = tableRowsData.find(r => r.top < splitPointPx && r.bottom > splitPointPx);
+                
+                if (rowToAdjust && (contentCanvas.height - tempYOffsetPx) > sliceHeightPx) {
+                    // Adjust slice height to end before this row
+                    sliceHeightPx = rowToAdjust.top - tempYOffsetPx;
+                }
 
-          if (!isFirstPage) {
-            pdf.addPage();
-          }
+                pages.push({
+                    yOffset: tempYOffsetPx,
+                    height: sliceHeightPx,
+                    footerType: 'simple' // placeholder
+                });
+                
+                tempYOffsetPx += sliceHeightPx;
+                if (tempYOffsetPx >= contentCanvas.height) break;
+            }
 
-          const pageSliceCanvas = document.createElement('canvas');
-          pageSliceCanvas.width = fullCanvas.width;
-          pageSliceCanvas.height = currentSlicePx;
+            // Fix footer types: last page gets the full footer
+            if (pages.length > 0) {
+                pages[pages.length - 1].footerType = 'full';
+                for (let i = 0; i < pages.length - 1; i++) {
+                    pages[i].footerType = 'simple';
+                }
+            }
 
-          const ctx = pageSliceCanvas.getContext('2d');
-          ctx.drawImage(
-            fullCanvas,
-            0,
-            yOffsetPx,
-            fullCanvas.width,
-            currentSlicePx,
-            0,
-            0,
-            fullCanvas.width,
-            currentSlicePx
-          );
+            // Safety check: if last page has very little content and it's not the first page,
+            // we might want to merge it or at least ensure it doesn't look "messed up".
+            // However, with row-aware slicing, it should be fine.
 
-          const sliceImageData = pageSliceCanvas.toDataURL('image/png');
-          const sliceHeightMm = (currentSlicePx * pageWidthMm) / fullCanvas.width;
-          pdf.addImage(sliceImageData, 'PNG', 0, 0, pageWidthMm, sliceHeightMm);
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                if (i > 0) pdf.addPage();
 
-          yOffsetPx += currentSlicePx;
-          isFirstPage = false;
+                const pageSliceCanvas = document.createElement('canvas');
+                pageSliceCanvas.width = contentCanvas.width;
+                pageSliceCanvas.height = page.height;
+
+                const ctx = pageSliceCanvas.getContext('2d');
+                ctx.drawImage(
+                    contentCanvas,
+                    0, page.yOffset, contentCanvas.width, page.height,
+                    0, 0, contentCanvas.width, page.height
+                );
+
+                const sliceImageData = pageSliceCanvas.toDataURL('image/png');
+                const sliceHeightMm = (page.height * pageWidthMm) / contentCanvas.width;
+                
+                pdf.addImage(sliceImageData, 'PNG', 0, 0, pageWidthMm, sliceHeightMm);
+                
+                if (page.footerType === 'full') {
+                    const footerImageData = footerCanvas.toDataURL('image/png');
+                    pdf.addImage(footerImageData, 'PNG', 0, pageHeightMm - footerHeightMm, pageWidthMm, footerHeightMm);
+                    addFooterLinks(pdf, pageHeightMm - footerHeightMm, footerHeightMm);
+                } else {
+                    const footerImageData = footerSimpleCanvas.toDataURL('image/png');
+                    pdf.addImage(footerImageData, 'PNG', 0, pageHeightMm - footerSimpleHeightMm, pageWidthMm, footerSimpleHeightMm);
+                }
+            }
+
+            pdf.save(`${fileBaseName}.pdf`);
+        } finally {
+            setBusy(false);
         }
-
-        pdf.save(`${fileBaseName}.pdf`);
-      } finally {
-        setBusy(false);
-      }
     });
-  </script>
+</script>
 
-  <nav class="floating-dock">
+<nav class="floating-dock">
     <a href="{{ url_for('index') }}" class="dock-item" title="New Receipt">New Receipt</a>
     <a href="{{ url_for('history') }}" class="dock-item" title="View Receipts">History</a>
     <div class="dock-divider"></div>
     <a href="{{ url_for('customers_list') }}" class="dock-item" title="Manage Customers">Customers</a>
     <a href="{{ url_for('items_list') }}" class="dock-item" title="Manage Items">Items</a>
-  </nav>
-  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</nav>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>

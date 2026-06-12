@@ -22,23 +22,21 @@ Simple web app for non-technical staff to create printable receipts.
 
 ## Run
 
-1. Install Python 3.10+.
-2. Open a terminal in this folder.
-3. Install dependencies:
+### Option 1: Desktop App Mode (Recommended)
+This runs the app as a standalone desktop window without needing a web browser.
+1. Run `RUN-DESKTOP.bat`.
 
+### Option 2: Browser Mode
+1. Start app:
 ```bash
-pip install -r requirements.txt
+python app.py
 ```
+2. Open browser: http://localhost:81 (or the port shown in terminal).
 
-4. Start app:
-
+### Option 3: Waitress/Production Mode
 ```bash
-flask --app app run
+python wsgi.py
 ```
-
-5. Open browser:
-
-- http://127.0.0.1:5000
 
 ## Database
 

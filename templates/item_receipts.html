@@ -50,7 +50,13 @@
                   <td><a href="{{ url_for('customer_receipts', name=receipt.customer_name) }}">{{ receipt.customer_name }}</a></td>
                   <td>{{ receipt.invoice_date }}</td>
                   <td>{{ receipt.total|iqd }}</td>
-                  <td><a href="{{ url_for('view_receipt', receipt_id=receipt.id) }}" class="button ghost" style="font-size: 0.8rem;">View</a></td>
+                  <td>
+                    <a href="{{ url_for('view_receipt', receipt_id=receipt.id) }}" class="button ghost" style="font-size: 0.8rem;">View</a>
+                    <a href="{{ url_for('edit_receipt', receipt_id=receipt.id) }}" class="button ghost" style="font-size: 0.8rem; background: #e3f2fd; color: #1976d2;">Edit</a>
+                    <form method="post" action="{{ url_for('delete_receipt', receipt_id=receipt.id) }}" style="display: inline;" onsubmit="return confirm('Delete this receipt permanently? This cannot be undone.');">
+                      <button type="submit" class="button ghost" style="font-size: 0.8rem; background: #ffebee; color: #d32f2f; border-color: #ffcdd2;">Delete</button>
+                    </form>
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>

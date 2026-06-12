@@ -2,20 +2,24 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import sqlite3
 from datetime import date, datetime
+from functools import wraps
 from math import ceil
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, session, url_for
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "receipts.db"
 BRANDING_CONFIG_PATH = BASE_DIR / "branding.json"
+CONFIG_PATH = BASE_DIR / "app_config.json"
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("RECEIPT_SECRET_KEY", "change-this-secret")
+app.config["PERMANENT_SESSION_LIFETIME"] = 86400 * 7  # 7 days
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 DEFAULT_SID = "GENERAL"
@@ -57,6 +61,56 @@ def load_branding() -> dict[str, Any]:
     merged = defaults.copy()
     merged.update(loaded)
     return merged
+
+
+def get_lan_ip() -> str:
+    """Get the local network IP address."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
+def load_app_config() -> dict[str, Any]:
+    """Load or create app configuration (password, etc)."""
+    defaults = {
+        "password": "password",
+        "password_enabled": True,
+    }
+    
+    if not CONFIG_PATH.exists():
+        return defaults
+    
+    try:
+        loaded = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return defaults
+    
+    if not isinstance(loaded, dict):
+        return defaults
+    
+    merged = defaults.copy()
+    merged.update(loaded)
+    return merged
+
+
+def save_app_config(config: dict[str, Any]) -> None:
+    """Save app configuration."""
+    CONFIG_PATH.write_text(json.dumps(config, indent=2), encoding="utf-8")
+
+
+def require_password(func):
+    """Decorator to require password authentication."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not session.get("authenticated"):
+            return redirect(url_for("login", next=request.url))
+        return func(*args, **kwargs)
+    return wrapper
 
 
 def get_db() -> sqlite3.Connection:
@@ -250,6 +304,15 @@ def format_iqd(value: Any) -> str:
     return f"{amount:,} IQD"
 
 
+@app.context_processor
+def inject_globals():
+    """Inject global variables into all templates."""
+    return {
+        "lan_ip": get_lan_ip(),
+        "app_port": int(os.getenv("RECEIPT_PORT", "80")),
+    }
+
+
 def resolve_logo_src(logo_url: str) -> str:
     raw = (logo_url or "").strip()
     if not raw:
@@ -276,7 +339,65 @@ def resolve_logo_src(logo_url: str) -> str:
     return ""
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login() -> str:
+    app_config = load_app_config()
+    
+    if not app_config.get("password_enabled", True):
+        session["authenticated"] = True
+        return redirect(request.args.get("next") or url_for("index"))
+    
+    if request.method == "POST":
+        password = request.form.get("password", "").strip()
+        if password == app_config.get("password", "password"):
+            session.permanent = True
+            session["authenticated"] = True
+            flash("Logged in successfully.", "success")
+            return redirect(request.args.get("next") or url_for("index"))
+        else:
+            flash("Incorrect password.", "error")
+    
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout() -> str:
+    session.clear()
+    flash("Logged out successfully.", "success")
+    return redirect(url_for("login"))
+
+
+@app.route("/settings", methods=["GET", "POST"])
+@require_password
+def settings() -> str:
+    app_config = load_app_config()
+    
+    if request.method == "POST":
+        action = request.form.get("action")
+        
+        if action == "password":
+            new_password = (request.form.get("new_password") or "").strip()
+            if len(new_password) < 4:
+                flash("Password must be at least 4 characters.", "error")
+            else:
+                app_config["password"] = new_password
+                save_app_config(app_config)
+                flash("Password updated successfully.", "success")
+        
+        elif action == "toggle_auth":
+            app_config["password_enabled"] = not app_config.get("password_enabled", True)
+            save_app_config(app_config)
+            status = "enabled" if app_config["password_enabled"] else "disabled"
+            flash(f"Password protection {status}.", "success")
+    
+    app_config = load_app_config()
+    lan_ip = get_lan_ip()
+    
+    return render_template("settings.html", lan_ip=lan_ip, app_config=app_config)
+
+
 @app.route("/", methods=["GET", "POST"])
+@require_password
 def index() -> str:
     if request.method == "POST":
         sid = DEFAULT_SID
@@ -436,6 +557,7 @@ def get_items_with_prices():
 
 
 @app.route("/customers")
+@require_password
 def customers_list():
     page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
@@ -455,6 +577,7 @@ def customers_list():
 
 
 @app.route("/customer/<name>/receipts")
+@require_password
 def customer_receipts(name: str):
     page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
@@ -483,6 +606,7 @@ def customer_receipts(name: str):
 
 
 @app.route("/items")
+@require_password
 def items_list():
     page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
@@ -502,6 +626,7 @@ def items_list():
 
 
 @app.route("/item/<item_desc>/receipts")
+@require_password
 def item_receipts(item_desc: str):
     page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
@@ -533,6 +658,7 @@ def item_receipts(item_desc: str):
 
 # Customer management routes
 @app.route("/customer/delete/<name>", methods=["POST"])
+@require_password
 def delete_customer(name: str):
     with get_db() as conn:
         conn.execute("DELETE FROM customers WHERE name = ? COLLATE NOCASE", (name,))
@@ -540,8 +666,52 @@ def delete_customer(name: str):
     return redirect(url_for("customers_list"))
 
 
+@app.route("/customer/edit/<name>", methods=["GET", "POST"])
+@require_password
+def edit_customer(name: str):
+    if request.method == "POST":
+        new_name = (request.form.get("name") or "").strip()
+
+        if not new_name:
+            flash("Customer name is required.", "error")
+            return redirect(url_for("edit_customer", name=name))
+
+        with get_db() as conn:
+            existing = conn.execute(
+                "SELECT 1 FROM customers WHERE name = ? COLLATE NOCASE AND name != ? COLLATE NOCASE",
+                (new_name, name),
+            ).fetchone()
+            if existing:
+                flash("A customer with this name already exists.", "error")
+                return redirect(url_for("edit_customer", name=name))
+
+            conn.execute(
+                "UPDATE customers SET name = ? WHERE name = ? COLLATE NOCASE",
+                (new_name, name),
+            )
+            conn.execute(
+                "UPDATE receipts SET customer_name = ? WHERE customer_name = ? COLLATE NOCASE",
+                (new_name, name),
+            )
+
+        flash("Customer updated successfully.", "success")
+        return redirect(url_for("customers_list"))
+
+    with get_db() as conn:
+        customer = conn.execute(
+            "SELECT name, times_used, last_used FROM customers WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
+
+    if customer is None:
+        return "Customer not found", 404
+
+    return render_template("edit_customer.html", customer=customer)
+
+
 # Item management routes
 @app.route("/item/delete/<item_desc>", methods=["POST"])
+@require_password
 def delete_item(item_desc: str):
     with get_db() as conn:
         conn.execute("DELETE FROM items WHERE description = ? COLLATE NOCASE", (item_desc,))
@@ -550,6 +720,7 @@ def delete_item(item_desc: str):
 
 
 @app.route("/item/edit/<item_desc>", methods=["GET", "POST"])
+@require_password
 def edit_item(item_desc: str):
     if request.method == "POST":
         new_description = (request.form.get("description") or "").strip()
@@ -580,6 +751,7 @@ def edit_item(item_desc: str):
 
 
 @app.route("/item/add", methods=["GET", "POST"])
+@require_password
 def add_item():
     if request.method == "POST":
         description = (request.form.get("description") or "").strip()
@@ -607,6 +779,7 @@ def add_item():
 
 
 @app.route("/customer/add", methods=["GET", "POST"])
+@require_password
 def add_customer():
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
@@ -633,6 +806,7 @@ def add_customer():
 
 
 @app.route("/receipt/<int:receipt_id>")
+@require_password
 def view_receipt(receipt_id: int) -> str:
     with get_db() as conn:
         receipt = conn.execute(
@@ -654,6 +828,7 @@ def view_receipt(receipt_id: int) -> str:
 
 
 @app.route("/receipt/<int:receipt_id>/edit", methods=["GET", "POST"])
+@require_password
 def edit_receipt(receipt_id: int) -> str:
     with get_db() as conn:
         receipt = conn.execute(
@@ -800,6 +975,7 @@ def serve_local_logo():
 
 
 @app.route("/history")
+@require_password
 def history() -> str:
     page, per_page = get_pagination_params(default_per_page=20)
     with get_db() as conn:
@@ -821,6 +997,7 @@ def history() -> str:
 
 
 @app.route("/receipt/<int:receipt_id>/delete", methods=["POST"])
+@require_password
 def delete_receipt(receipt_id: int):
     with get_db() as conn:
         receipt = conn.execute(
@@ -848,6 +1025,6 @@ init_db()
 
 if __name__ == "__main__":
     host = os.getenv("RECEIPT_HOST", "127.0.0.1")
-    port = int(os.getenv("RECEIPT_PORT", "5000"))
+    port = int(os.getenv("RECEIPT_PORT", "81"))
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
     app.run(host=host, port=port, debug=debug)

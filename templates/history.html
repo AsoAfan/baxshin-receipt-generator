@@ -24,7 +24,10 @@
     <section class="history-card">
       <div class="history-head">
         <h1>Recent Receipts</h1>
-        <a href="{{ url_for('index') }}" class="button primary">New Receipt</a>
+        <div class="hero-actions-row">
+          <a href="{{ url_for('settings') }}" class="button ghost" title="Settings">Settings</a>
+          <a href="{{ url_for('index') }}" class="button primary">New Receipt</a>
+        </div>
       </div>
 
       <div class="actions" style="margin-bottom: 1.5rem;">
@@ -36,37 +39,40 @@
         <p class="table-total">Total receipts: {{ pagination.total }}</p>
       {% endif %}
 
-      <table>
-        <thead>
-          <tr>
-            <th>Receipt</th>
-            <th>Name</th>
-            <th>Date</th>
-            <th>Total</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in receipts %}
+      <div class="table-wrapper">
+        <table class="history-table manage-table">
+          <thead>
             <tr>
-              <td><a href="{{ url_for('view_receipt', receipt_id=row.id) }}">{{ row.receipt_number }}</a></td>
-              <td>{{ row.customer_name }}</td>
-              <td>{{ row.invoice_date }}</td>
-              <td>{{ row.total|iqd }}</td>
-              <td>
-                <a class="button ghost" href="{{ url_for('edit_receipt', receipt_id=row.id) }}">Edit</a>
-                <form method="post" action="{{ url_for('delete_receipt', receipt_id=row.id) }}" style="display:inline-block;" onsubmit="return confirm('Delete this receipt permanently? This cannot be undone.');">
-                  <button class="button remove" type="submit">Delete</button>
-                </form>
-              </td>
+              <th>Receipt</th>
+              <th>Name</th>
+              <th>Date</th>
+              <th>Total</th>
+              <th>Actions</th>
             </tr>
-          {% else %}
-            <tr>
-              <td colspan="5">No receipts yet.</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for row in receipts %}
+              <tr>
+                <td data-label="Receipt">{{ row.receipt_number }}</td>
+                <td data-label="Name">{{ row.customer_name }}</td>
+                <td data-label="Date">{{ row.invoice_date }}</td>
+                <td data-label="Total">{{ row.total|iqd }}</td>
+                <td class="actions-cell" data-label="Actions">
+                  <a class="button ghost" href="{{ url_for('view_receipt', receipt_id=row.id) }}" style="font-size: 0.8rem;">View</a>
+                  <a class="button ghost" href="{{ url_for('edit_receipt', receipt_id=row.id) }}" style="font-size: 0.8rem; background: #e3f2fd; color: #1976d2;">Edit</a>
+                  <form method="post" action="{{ url_for('delete_receipt', receipt_id=row.id) }}" style="display: inline;" onsubmit="return confirm('Delete this receipt permanently? This cannot be undone.');">
+                    <button class="button ghost" type="submit" style="font-size: 0.8rem; background: #ffebee; color: #d32f2f; border-color: #ffcdd2;">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td class="empty-note" colspan="5">No receipts yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
       {% if pagination %}
         <div class="pagination-bar" aria-label="History pagination">

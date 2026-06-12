@@ -15,6 +15,12 @@ ENV/
 .ruff_cache/
 .cache/
 
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+*.exe
+
 # Environment files
 .env
 .env.*

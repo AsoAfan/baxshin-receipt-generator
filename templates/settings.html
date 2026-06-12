@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+  <meta name="theme-color" content="#0cb09b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <style>
+    .settings-card {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .settings-section {
+      background: #f5f7fa;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #e0e7ff;
+    }
+
+    .settings-section h2 {
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+      color: #0b8f7e;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #0cb09b;
+      box-shadow: 0 0 4px rgba(12, 176, 155, 0.2);
+    }
+
+    .ip-display {
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      border: 2px solid #0cb09b;
+      font-family: monospace;
+      font-weight: 700;
+      text-align: center;
+      color: #0b8f7e;
+      word-break: break-all;
+    }
+
+    .ip-label {
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .copy-hint {
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 6px;
+    }
+
+    .toggle-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .toggle-section:first-of-type {
+      border-top: none;
+      padding-top: 0;
+    }
+
+    .toggle-label {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #0cb09b;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .button.primary {
+      background: #0cb09b;
+      color: white;
+    }
+
+    .button.primary:hover {
+      background: #0a9587;
+    }
+
+    .button.ghost {
+      background: transparent;
+      color: #0cb09b;
+      border: 2px solid #0cb09b;
+    }
+
+    .button.ghost:hover {
+      background: #f0fffe;
+    }
+
+    .hidden-submit {
+      display: none;
+    }
+
+    .flash-message {
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+
+    .flash-message.error {
+      background: #ffebee;
+      color: #d32f2f;
+      border: 1px solid #ffcdd2;
+    }
+
+    .flash-message.success {
+      background: #e8f5e9;
+      color: #388e3c;
+      border: 1px solid #c8e6c9;
+    }
+  </style>
+</head>
+<body>
+  <aside id="offline-banner" class="offline-banner no-print" hidden>
+    <p>You are offline. Showing cached content.</p>
+  </aside>
+
+  <main class="page page-form">
+    <section class="settings-card">
+      <header class="hero">
+        <p class="eyebrow">Settings</p>
+        <h1>App Configuration</h1>
+        <p class="sub">Manage your Receipt App settings.</p>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- Network Access Section -->
+      <div class="settings-section">
+        <h2>📡 Network Access</h2>
+        <div class="form-group">
+          <label class="ip-label">Share this URL with others on your WiFi:</label>
+          <div class="ip-display" onclick="navigator.clipboard.writeText('http://{{ lan_ip }}{% if app_port != 80 %}:{{ app_port }}{% endif %}'); alert('Copied to clipboard!')">
+            http://{{ lan_ip }}{% if app_port != 80 %}:{{ app_port }}{% endif %}
+          </div>
+          <div class="copy-hint">Click to copy</div>
+        </div>
+      </div>
+
+      <!-- Security Section -->
+      <div class="settings-section">
+        <h2>🔐 Security</h2>
+        
+        <!-- Toggle Password Protection -->
+        <div class="toggle-section">
+          <span class="toggle-label">Password Protection</span>
+          <div class="toggle-switch">
+            <form method="post" style="display: inline;">
+              <input type="hidden" name="action" value="toggle_auth">
+              <label class="switch">
+                <input type="checkbox" onchange="this.form.submit()" {% if app_config.get('password_enabled', true) %}checked{% endif %}>
+                <span class="slider"></span>
+              </label>
+            </form>
+          </div>
+        </div>
+
+        {% if app_config.get('password_enabled', true) %}
+          <!-- Change Password -->
+          <form method="post" style="margin-top: 20px;">
+            <input type="hidden" name="action" value="password">
+            <div class="form-group">
+              <label>New Password</label>
+              <input type="password" name="new_password" placeholder="Enter new password (min 4 chars)" required>
+            </div>
+            <button type="submit" class="button primary">Update Password</button>
+          </form>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <a href="{{ url_for('history') }}" class="button ghost">Back to App</a>
+        <a href="{{ url_for('logout') }}" class="button primary">Logout</a>
+      </div>
+    </section>
+  </main>
+
+  <nav class="floating-dock">
+    <a href="{{ url_for('index') }}" class="dock-item" title="New Receipt">New Receipt</a>
+    <a href="{{ url_for('history') }}" class="dock-item" title="View Receipts">History</a>
+    <div class="dock-divider"></div>
+    <a href="{{ url_for('customers_list') }}" class="dock-item" title="Manage Customers">Customers</a>
+    <a href="{{ url_for('items_list') }}" class="dock-item" title="Manage Items">Items</a>
+  </nav>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
