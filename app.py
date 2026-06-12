@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import sqlite3
+import sys
 from datetime import date, datetime
 from functools import wraps
 from math import ceil
@@ -12,12 +13,30 @@ from typing import Any
 
 from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, session, url_for
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "receipts.db"
-BRANDING_CONFIG_PATH = BASE_DIR / "branding.json"
-CONFIG_PATH = BASE_DIR / "app_config.json"
+def get_base_dir() -> Path:
+    if getattr(sys, 'frozen', False):
+        # Running as a bundled executable
+        return Path(sys._MEIPASS).resolve()
+    return Path(__file__).resolve().parent
 
-app = Flask(__name__)
+BASE_DIR = get_base_dir()
+
+def get_data_dir() -> Path:
+    if getattr(sys, 'frozen', False):
+        # When frozen, we want the database to be next to the executable, 
+        # not inside the temporary internal _MEIPASS folder.
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+DATA_DIR = get_data_dir()
+
+DB_PATH = DATA_DIR / "receipts.db"
+BRANDING_CONFIG_PATH = DATA_DIR / "branding.json"
+CONFIG_PATH = DATA_DIR / "app_config.json"
+
+app = Flask(__name__, 
+            template_folder=str(BASE_DIR / "templates"),
+            static_folder=str(BASE_DIR / "static"))
 app.config["SECRET_KEY"] = os.getenv("RECEIPT_SECRET_KEY", "change-this-secret")
 app.config["PERMANENT_SESSION_LIFETIME"] = 86400 * 7  # 7 days
 
@@ -48,6 +67,16 @@ def load_branding() -> dict[str, Any]:
     }
 
     if not BRANDING_CONFIG_PATH.exists():
+        # Try looking in BASE_DIR if not in DATA_DIR (for the first run/fresh install)
+        alt_path = BASE_DIR / "branding.json"
+        if alt_path.exists():
+            try:
+                loaded = json.loads(alt_path.read_text(encoding="utf-8"))
+                # Copy it to DATA_DIR so it can be modified if needed
+                BRANDING_CONFIG_PATH.write_text(json.dumps(loaded, indent=2), encoding="utf-8")
+                return loaded
+            except:
+                pass
         return defaults
 
     try:
@@ -141,6 +170,13 @@ def _ensure_column(
 
 
 def init_db() -> None:
+    # Ensure DATA_DIR exists
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # Fallback to current directory if DATA_DIR creation fails
+        pass
+    
     with get_db() as conn:
         conn.executescript(
             """
@@ -307,9 +343,11 @@ def format_iqd(value: Any) -> str:
 @app.context_processor
 def inject_globals():
     """Inject global variables into all templates."""
+    branding = load_branding()
     return {
         "lan_ip": get_lan_ip(),
         "app_port": int(os.getenv("RECEIPT_PORT", "80")),
+        "branding": branding,
     }
 
 
@@ -955,6 +993,11 @@ def edit_receipt(receipt_id: int) -> str:
 
 @app.route("/img/<path:filename>")
 def serve_img(filename: str):
+    # First try DATA_DIR (user uploaded/copied logos)
+    data_img = DATA_DIR / "img" / filename
+    if data_img.exists():
+        return send_from_directory(DATA_DIR / "img", filename)
+    # Then try BASE_DIR (bundled assets)
     return send_from_directory(BASE_DIR / "img", filename)
 
 

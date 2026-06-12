@@ -26,6 +26,11 @@ Simple web app for non-technical staff to create printable receipts.
 This runs the app as a standalone desktop window without needing a web browser.
 1. Run `RUN-DESKTOP.bat`.
 
+### Option 4: Standalone Executable (For Clients)
+If you want to share the app without sharing the source code:
+1. Run `BUILD-EXE.bat`.
+2. Share the contents of the `dist` folder.
+
 ### Option 2: Browser Mode
 1. Start app:
 ```bash

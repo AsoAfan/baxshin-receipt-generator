@@ -15,7 +15,8 @@ def get_free_port():
 def run_flask(port):
     # Ensure DB is initialized
     init_db()
-    # Run the Flask app
+    # In production/desktop mode, we don't need debug and reloader
+    # Waitress would be better for a production feel, but app.run is fine for single user
     app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False)
 
 if __name__ == '__main__':

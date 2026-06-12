@@ -47,6 +47,13 @@ All dependencies (Flask, Waitress, Jinja2, etc.) are bundled into the .exe.
 
 ---
 
-## Sharing with Others
+## Sharing with Others (No Source Code)
 
-You can share just the `dist` folder with others, and they can run `ReceiptApp.exe` directly without any Python installation! Or give them either batch file as a shortcut.
+To give the app to a client without giving them the Python source code:
+
+1. Run **`BUILD-EXE.bat`**. This will create a `dist` folder.
+2. Inside `dist`, you will find the `ReceiptAppDesktop` folder (or just `ReceiptAppDesktop.exe`).
+3. Send that folder/file to your client.
+4. They can run it directly. All assets and the database will be handled automatically.
+
+**Note:** The app will create `receipts.db` and `app_config.json` in the same folder as the `.exe` the first time it runs.
