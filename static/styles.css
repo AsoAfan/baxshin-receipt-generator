@@ -389,7 +389,7 @@ input:focus {
 }
 
 .invoice-table-container {
-  margin-bottom: 12px;
+  margin-bottom: 40px;
 }
 
 .invoice-table thead {
@@ -445,7 +445,7 @@ input:focus {
 }
 
 .receipt-lower {
-  margin-top: 8px;
+  margin-top: auto;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;

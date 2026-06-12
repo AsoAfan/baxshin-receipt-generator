@@ -39,8 +39,6 @@ app = Flask(__name__,
             static_folder=str(BASE_DIR / "static"))
 app.config["SECRET_KEY"] = os.getenv("RECEIPT_SECRET_KEY", "change-this-secret")
 app.config["PERMANENT_SESSION_LIFETIME"] = 86400 * 7  # 7 days
-# Allow larger payloads for high-resolution PNG/PDF exports
-app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024  # 200MB
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 DEFAULT_SID = "GENERAL"
@@ -432,9 +430,8 @@ def settings() -> str:
     
     app_config = load_app_config()
     lan_ip = get_lan_ip()
-    app_port = int(os.getenv("RECEIPT_PORT", "81"))
     
-    return render_template("settings.html", lan_ip=lan_ip, app_port=app_port, app_config=app_config)
+    return render_template("settings.html", lan_ip=lan_ip, app_config=app_config)
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -1066,77 +1063,11 @@ def offline() -> str:
     return render_template("offline.html")
 
 
-@app.route("/api/export-pdf", methods=["POST"])
-@require_password
-def export_pdf():
-    data = request.json
-    if not data or "pdf_data" not in data or "filename" not in data:
-        return "Invalid data", 400
-    
-    import base64
-    from io import BytesIO
-    
-    try:
-        # Some clients might send just the base64 part, others might send the data URI
-        raw_data = data["pdf_data"]
-        if "," in raw_data:
-            header, encoded = raw_data.split(",", 1)
-        else:
-            encoded = raw_data
-            
-        pdf_content = base64.b64decode(encoded)
-        return send_file(
-            BytesIO(pdf_content),
-            mimetype="application/pdf",
-            as_attachment=True,
-            download_name=data["filename"]
-        )
-    except Exception as e:
-        import traceback
-        print(f"PDF Export Error: {e}")
-        traceback.print_exc()
-        return str(e), 500
-
-@app.route("/api/export-png", methods=["POST"])
-@require_password
-def export_png():
-    data = request.json
-    if not data or "png_data" not in data or "filename" not in data:
-        return "Invalid data", 400
-    
-    import base64
-    from io import BytesIO
-    
-    try:
-        raw_data = data["png_data"]
-        if "," in raw_data:
-            header, encoded = raw_data.split(",", 1)
-        else:
-            encoded = raw_data
-            
-        png_content = base64.b64decode(encoded)
-        return send_file(
-            BytesIO(png_content),
-            mimetype="image/png",
-            as_attachment=True,
-            download_name=data["filename"]
-        )
-    except Exception as e:
-        import traceback
-        print(f"PNG Export Error: {e}")
-        traceback.print_exc()
-        return str(e), 500
-
 init_db()
 
 
 if __name__ == "__main__":
-    # Binding to 0.0.0.0 allows LAN access
-    host = os.getenv("RECEIPT_HOST", "0.0.0.0")
+    host = os.getenv("RECEIPT_HOST", "127.0.0.1")
     port = int(os.getenv("RECEIPT_PORT", "81"))
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
-    
-    print(f"Starting server on {host}:{port}")
-    print(f"Accessible on LAN at http://{get_lan_ip()}:{port}")
-    
     app.run(host=host, port=port, debug=debug)

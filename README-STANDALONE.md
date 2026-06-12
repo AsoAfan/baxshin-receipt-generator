@@ -18,7 +18,7 @@ No Python installation needed! The app is bundled with all dependencies.
 **Steps:**
 1. Double-click `START-Receipt-App.bat` (or `RUN-APP.bat`)
 2. A terminal window will open
-3. Open your browser to `http://localhost:81`
+3. Open your browser to `http://localhost:5000`
 4. Keep the terminal window open while using the app
 5. Close the terminal to stop the app
 
@@ -32,7 +32,7 @@ If you have Python and want to use the venv:
 .\venv\Scripts\python.exe .\wsgi.py
 ```
 
-Then open `http://localhost:81` in your browser.
+Then open `http://localhost:5000` in your browser.
 
 ---
 

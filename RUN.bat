@@ -31,8 +31,8 @@ echo ================================================
 echo.
 echo Open in your browser:
 echo.
-echo   LOCAL:   http://localhost:81
-echo   NETWORK: http://%ip%:81
+echo   LOCAL:   http://localhost:5000
+echo   NETWORK: http://%ip%:5000
 echo.
 echo Share the NETWORK URL with others on your WiFi
 echo.
@@ -41,7 +41,7 @@ echo ================================================
 echo.
 
 REM Try to open browser
-start http://localhost:81
+start http://localhost:5000
 
 REM Keep window visible briefly then close
 timeout /t 5 /nobreak >nul

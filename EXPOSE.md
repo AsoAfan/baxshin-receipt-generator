@@ -34,27 +34,9 @@ After login, you'll see:
 2. Copy the displayed URL under "Network Access"
 3. Share with others on your WiFi
 
-**Example:** `http://192.168.1.227:81`
+**Example:** `http://192.168.1.227:5000`
 
 ---
-
-## 🔧 Troubleshooting LAN Access
-
-If other devices cannot open the app:
-
-### 1. Windows Firewall (Most Common)
-You must allow the app through the Windows Firewall:
-1. Open **Windows Security** -> **Firewall & network protection**.
-2. Click **Allow an app through firewall**.
-3. Click **Change settings** (admin).
-4. Look for `receipt_app.exe` or `python.exe` and ensure both **Private** and **Public** are checked.
-5. If not there, click **Allow another app...** and select your app executable.
-
-### 2. Network Type
-Ensure your WiFi is set to **Private** network, not Public. Windows blocks incoming connections on Public networks.
-
-### 3. Use Port 81
-The app specifically uses port **81**. Ensure you include `:81` at the end of the IP address when typing it on other devices.
 
 ## 🔒 Security Features
 
