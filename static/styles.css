@@ -275,10 +275,9 @@ input:focus {
 
 .receipt-main {
   padding: 44px 42px 0;
+  min-height: 0;
   position: relative;
   flex: 1 0 auto;
-  display: flex;
-  flex-direction: column;
 }
 
 .deco-wave-top {
@@ -388,10 +387,6 @@ input:focus {
   width: 100%;
 }
 
-.invoice-table-container {
-  margin-bottom: 40px;
-}
-
 .invoice-table thead {
   background: #0b8f7e;
   color: #f4f8ff;
@@ -445,12 +440,11 @@ input:focus {
 }
 
 .receipt-lower {
-  margin-top: auto;
+  margin-top: 10px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 12px;
-  padding-bottom: 40px;
 }
 
 .terms-box {
@@ -513,34 +507,16 @@ input:focus {
 }
 
 .receipt-foot {
-  height: 110px;
+  height: 116px;
   background: linear-gradient(95deg, #56cfbe 0%, #0cb09b 100%);
   position: relative;
   color: #f2f8ff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 24px;
+  padding: 14px 24px;
+  margin-top: auto;
   flex-shrink: 0;
-}
-
-.receipt-foot-simple {
-  height: 32px;
-  background: var(--brand-a);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 20px;
-  flex-shrink: 0;
-}
-
-.receipt-foot-simple p {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .deco-foot {
@@ -571,6 +547,7 @@ input:focus {
   font-size: 10px;
   font-weight: 500;
   display: flex;
+    /* flex: 0 0 calc(50% - 6px);  */
   align-items: center;
 }
 
@@ -769,23 +746,12 @@ tbody tr:nth-child(even) {
   }
 
   .receipt-canvas {
-    height: auto;
     min-height: auto;
   }
 
   .receipt-main {
     padding: 20px 16px 0;
-    height: auto;
     min-height: auto;
-    overflow: visible;
-  }
-
-  .invoice-table-container {
-    overflow: visible;
-  }
-
-  .receipt-foot-simple {
-    display: none;
   }
 
   .deco-tools {
@@ -1110,19 +1076,9 @@ tbody tr:nth-child(even) {
     border: none;
     width: 210mm;
     min-height: 297mm;
+    max-height: none;
     padding: 0;
     margin: 0;
-  }
-
-  .receipt-main {
-    overflow: visible;
-  }
-
-  .invoice-table-container {
-    overflow: visible;
-  }
-
-  .receipt-foot-simple {
-    display: none;
+    overflow: hidden;
   }
 }

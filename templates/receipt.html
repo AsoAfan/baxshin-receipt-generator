@@ -59,30 +59,28 @@
                 </div>
             </header>
 
-            <div class="invoice-table-container">
-                <table class="invoice-table">
-                    <thead>
+            <table class="invoice-table">
+                <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>Description</th>
+                    <th>Price</th>
+                    <th>Qty.</th>
+                    <th>Total</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for item in items %}
                     <tr>
-                        <th>No.</th>
-                        <th>Description</th>
-                        <th>Price</th>
-                        <th>Qty.</th>
-                        <th>Total</th>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ item.description }}</td>
+                        <td>{{ item.price|iqd }}</td>
+                        <td>{{ item.qty|int }}</td>
+                        <td>{{ item.line_total|iqd }}</td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for item in items %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td>{{ item.description }}</td>
-                            <td>{{ item.price|iqd }}</td>
-                            <td>{{ item.qty|int }}</td>
-                            <td>{{ item.line_total|iqd }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% endfor %}
+                </tbody>
+            </table>
 
             <section class="receipt-lower">
                 <div class="terms-box">
@@ -130,10 +128,6 @@
                 </div>
             {% endif %}
         </footer>
-
-        <footer class="receipt-foot-simple" style="display: none;">
-            <p>Baxshin hospital</p>
-        </footer>
     </article>
 
     <div class="receipt-actions-bar no-print">
@@ -153,7 +147,6 @@
     const receiptCanvas = document.querySelector('.receipt-canvas');
     const receiptMain = document.querySelector('.receipt-main');
     const receiptFooter = document.querySelector('.receipt-foot');
-    const receiptFooterSimple = document.querySelector('.receipt-foot-simple');
     const exportPngButton = document.getElementById('export-png');
     const exportPdfButton = document.getElementById('export-pdf');
     const fileBaseName = '{{ receipt.receipt_number }}'.replace(/\s+/g, '-').toLowerCase();
@@ -168,13 +161,7 @@
 
     const captureReceipt = async (excludeFooter = false) => {
         const originalDisplay = receiptFooter.style.display;
-        const originalSimpleDisplay = receiptFooterSimple.style.display;
-        
-        if (excludeFooter) {
-            receiptFooter.style.display = 'none';
-            receiptFooterSimple.style.display = 'none';
-        }
-        
+        if (excludeFooter) receiptFooter.style.display = 'none';
         try {
             return await html2canvas(receiptCanvas, {
                 scale: 2,
@@ -184,28 +171,18 @@
                 logging: false,
             });
         } finally {
-            if (excludeFooter) {
-                receiptFooter.style.display = originalDisplay;
-                receiptFooterSimple.style.display = originalSimpleDisplay;
-            }
+            if (excludeFooter) receiptFooter.style.display = originalDisplay;
         }
     };
 
     const captureNode = async (node) => {
-        const originalDisplay = node.style.display;
-        if (originalDisplay === 'none') {
-            node.style.display = 'flex';
-        }
-        try {
-            return await html2canvas(node, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                logging: false,
-            });
-        } finally {
-            node.style.display = originalDisplay;
-        }
+        return html2canvas(node, {
+            scale: 2,
+            backgroundColor: '#f9fcff',
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+        });
     };
 
     const makeWebUrl = (value) => {
@@ -260,10 +237,9 @@
         try {
             setBusy(true);
             
-            // Capture footers separately
+            // Capture footer separately to repeat it on every page
             const footerCanvas = await captureNode(receiptFooter);
-            const footerSimpleCanvas = await captureNode(receiptFooterSimple);
-            // Capture main content without any footer
+            // Capture main content without the footer
             const contentCanvas = await captureReceipt(true);
 
             const {jsPDF} = window.jspdf;
@@ -272,97 +248,58 @@
             const pageHeightMm = 297;
 
             const footerHeightMm = (footerCanvas.height * pageWidthMm) / footerCanvas.width;
-            const footerSimpleHeightMm = (footerSimpleCanvas.height * pageWidthMm) / footerSimpleCanvas.width;
+            const contentPageHeightMm = pageHeightMm - footerHeightMm;
             
-            // Add extra whitespace (margin) before footer in PDF
-            const pdfPaddingMm = 10;
+            // Slice height in pixels based on content area
+            const sliceHeightPx = Math.floor((contentPageHeightMm * contentCanvas.width) / pageWidthMm);
             
-            // We need to know where table rows are to avoid cutting them
-            const tableRows = Array.from(document.querySelectorAll('.invoice-table tbody tr'));
-            const tableRowsData = tableRows.map(row => {
-                const rect = row.getBoundingClientRect();
-                const canvasRect = receiptCanvas.getBoundingClientRect();
-                return {
-                    top: rect.top - canvasRect.top,
-                    bottom: rect.bottom - canvasRect.top,
-                    height: rect.height
-                };
-            });
-
             let yOffsetPx = 0;
             let isFirstPage = true;
 
-            // Pre-calculate pages to know which is the last one
-            const pages = [];
-            let tempYOffsetPx = 0;
-            
-            while (tempYOffsetPx < contentCanvas.height) {
-                const isLastEstimation = (tempYOffsetPx + ((pageHeightMm - footerHeightMm - pdfPaddingMm) * contentCanvas.width / pageWidthMm)) >= contentCanvas.height;
-                const currentFooterHeightMm = isLastEstimation ? footerHeightMm : footerSimpleHeightMm;
-                const availableHeightMm = pageHeightMm - currentFooterHeightMm - pdfPaddingMm;
-                const availableHeightPx = (availableHeightMm * contentCanvas.width) / pageWidthMm;
-                
-                let sliceHeightPx = Math.min(availableHeightPx, contentCanvas.height - tempYOffsetPx);
-                
-                // Try to find a row boundary if we are cutting through the table
-                const splitPointPx = tempYOffsetPx + sliceHeightPx;
-                const rowToAdjust = tableRowsData.find(r => r.top < splitPointPx && r.bottom > splitPointPx);
-                
-                if (rowToAdjust && (contentCanvas.height - tempYOffsetPx) > sliceHeightPx) {
-                    // Adjust slice height to end before this row
-                    sliceHeightPx = rowToAdjust.top - tempYOffsetPx;
+            while (yOffsetPx < contentCanvas.height) {
+                const remainingPx = contentCanvas.height - yOffsetPx;
+                // If it's a tiny sliver on a new page, don't bother (might be just padding)
+                if (!isFirstPage && remainingPx < (contentCanvas.width * 5 / pageWidthMm)) {
+                    break;
                 }
 
-                pages.push({
-                    yOffset: tempYOffsetPx,
-                    height: sliceHeightPx,
-                    footerType: 'simple' // placeholder
-                });
-                
-                tempYOffsetPx += sliceHeightPx;
-                if (tempYOffsetPx >= contentCanvas.height) break;
-            }
-
-            // Fix footer types: last page gets the full footer
-            if (pages.length > 0) {
-                pages[pages.length - 1].footerType = 'full';
-                for (let i = 0; i < pages.length - 1; i++) {
-                    pages[i].footerType = 'simple';
+                if (!isFirstPage) {
+                    pdf.addPage();
                 }
-            }
 
-            // Safety check: if last page has very little content and it's not the first page,
-            // we might want to merge it or at least ensure it doesn't look "messed up".
-            // However, with row-aware slicing, it should be fine.
-
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
-                if (i > 0) pdf.addPage();
-
+                const currentSlicePx = Math.min(sliceHeightPx, remainingPx);
                 const pageSliceCanvas = document.createElement('canvas');
                 pageSliceCanvas.width = contentCanvas.width;
-                pageSliceCanvas.height = page.height;
+                pageSliceCanvas.height = currentSlicePx;
 
                 const ctx = pageSliceCanvas.getContext('2d');
                 ctx.drawImage(
                     contentCanvas,
-                    0, page.yOffset, contentCanvas.width, page.height,
-                    0, 0, contentCanvas.width, page.height
+                    0,
+                    yOffsetPx,
+                    contentCanvas.width,
+                    currentSlicePx,
+                    0,
+                    0,
+                    contentCanvas.width,
+                    currentSlicePx
                 );
 
                 const sliceImageData = pageSliceCanvas.toDataURL('image/png');
-                const sliceHeightMm = (page.height * pageWidthMm) / contentCanvas.width;
+                const sliceHeightMm = (currentSlicePx * pageWidthMm) / contentCanvas.width;
                 
+                // Add content slice
                 pdf.addImage(sliceImageData, 'PNG', 0, 0, pageWidthMm, sliceHeightMm);
                 
-                if (page.footerType === 'full') {
-                    const footerImageData = footerCanvas.toDataURL('image/png');
-                    pdf.addImage(footerImageData, 'PNG', 0, pageHeightMm - footerHeightMm, pageWidthMm, footerHeightMm);
-                    addFooterLinks(pdf, pageHeightMm - footerHeightMm, footerHeightMm);
-                } else {
-                    const footerImageData = footerSimpleCanvas.toDataURL('image/png');
-                    pdf.addImage(footerImageData, 'PNG', 0, pageHeightMm - footerSimpleHeightMm, pageWidthMm, footerSimpleHeightMm);
-                }
+                // Add footer at the bottom of EVERY page
+                const footerImageData = footerCanvas.toDataURL('image/png');
+                pdf.addImage(footerImageData, 'PNG', 0, pageHeightMm - footerHeightMm, pageWidthMm, footerHeightMm);
+                
+                // Optional: add links to footer on every page
+                addFooterLinks(pdf, pageHeightMm - footerHeightMm, footerHeightMm);
+
+                yOffsetPx += currentSlicePx;
+                isFirstPage = false;
             }
 
             pdf.save(`${fileBaseName}.pdf`);
