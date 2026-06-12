@@ -1063,11 +1063,62 @@ def offline() -> str:
     return render_template("offline.html")
 
 
+@app.route("/api/export-pdf", methods=["POST"])
+@require_password
+def export_pdf():
+    data = request.json
+    if not data or "pdf_data" not in data or "filename" not in data:
+        return "Invalid data", 400
+    
+    import base64
+    from io import BytesIO
+    
+    try:
+        # datauristring comes as "data:application/pdf;filename=inv-00001.pdf;base64,JVBERi0xLjc..."
+        # or simply "data:application/pdf;base64,..."
+        header, encoded = data["pdf_data"].split(",", 1)
+        pdf_content = base64.b64decode(encoded)
+        return send_file(
+            BytesIO(pdf_content),
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=data["filename"]
+        )
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/api/export-png", methods=["POST"])
+@require_password
+def export_png():
+    data = request.json
+    if not data or "png_data" not in data or "filename" not in data:
+        return "Invalid data", 400
+    
+    import base64
+    from io import BytesIO
+    
+    try:
+        header, encoded = data["png_data"].split(",", 1)
+        png_content = base64.b64decode(encoded)
+        return send_file(
+            BytesIO(png_content),
+            mimetype="image/png",
+            as_attachment=True,
+            download_name=data["filename"]
+        )
+    except Exception as e:
+        return str(e), 500
+
 init_db()
 
 
 if __name__ == "__main__":
-    host = os.getenv("RECEIPT_HOST", "127.0.0.1")
+    # Binding to 0.0.0.0 allows LAN access
+    host = os.getenv("RECEIPT_HOST", "0.0.0.0")
     port = int(os.getenv("RECEIPT_PORT", "81"))
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    
+    print(f"Starting server on {host}:{port}")
+    print(f"Accessible on LAN at http://{get_lan_ip()}:{port}")
+    
     app.run(host=host, port=port, debug=debug)

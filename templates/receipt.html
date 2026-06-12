@@ -16,8 +16,8 @@
     <meta name="theme-color" content="#0cb09b"/>
     <meta name="apple-mobile-web-app-capable" content="yes"/>
     <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='html2canvas.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='jspdf.umd.min.js') }}"></script>
 </head>
 <body class="receipt-preview-body">
 <aside id="offline-banner" class="offline-banner no-print" hidden>
@@ -247,10 +247,32 @@
         try {
             setBusy(true);
             const canvas = await captureReceipt();
-            const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/png');
-            link.download = `${fileBaseName}.png`;
-            link.click();
+            const pngData = canvas.toDataURL('image/png');
+            const filename = `${fileBaseName}.png`;
+
+            const response = await fetch('/api/export-png', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ png_data: pngData, filename: filename })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                console.error('Export failed');
+                alert('Export failed. Please try again.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Export failed: ' + err.message);
         } finally {
             setBusy(false);
         }
@@ -331,10 +353,6 @@
                 }
             }
 
-            // Safety check: if last page has very little content and it's not the first page,
-            // we might want to merge it or at least ensure it doesn't look "messed up".
-            // However, with row-aware slicing, it should be fine.
-
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 if (i > 0) pdf.addPage();
@@ -365,7 +383,32 @@
                 }
             }
 
-            pdf.save(`${fileBaseName}.pdf`);
+            const pdfData = pdf.output('datauristring');
+            const filename = `${fileBaseName}.pdf`;
+
+            const response = await fetch('/api/export-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pdf_data: pdfData, filename: filename })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                console.error('Export failed');
+                alert('Export failed. Please try again.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Export failed: ' + err.message);
         } finally {
             setBusy(false);
         }
