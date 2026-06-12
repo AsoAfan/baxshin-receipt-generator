@@ -39,6 +39,8 @@ app = Flask(__name__,
             static_folder=str(BASE_DIR / "static"))
 app.config["SECRET_KEY"] = os.getenv("RECEIPT_SECRET_KEY", "change-this-secret")
 app.config["PERMANENT_SESSION_LIFETIME"] = 86400 * 7  # 7 days
+# Allow larger payloads for high-resolution PNG/PDF exports
+app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024  # 200MB
 
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 DEFAULT_SID = "GENERAL"
@@ -1075,9 +1077,13 @@ def export_pdf():
     from io import BytesIO
     
     try:
-        # datauristring comes as "data:application/pdf;filename=inv-00001.pdf;base64,JVBERi0xLjc..."
-        # or simply "data:application/pdf;base64,..."
-        header, encoded = data["pdf_data"].split(",", 1)
+        # Some clients might send just the base64 part, others might send the data URI
+        raw_data = data["pdf_data"]
+        if "," in raw_data:
+            header, encoded = raw_data.split(",", 1)
+        else:
+            encoded = raw_data
+            
         pdf_content = base64.b64decode(encoded)
         return send_file(
             BytesIO(pdf_content),
@@ -1086,6 +1092,9 @@ def export_pdf():
             download_name=data["filename"]
         )
     except Exception as e:
+        import traceback
+        print(f"PDF Export Error: {e}")
+        traceback.print_exc()
         return str(e), 500
 
 @app.route("/api/export-png", methods=["POST"])
@@ -1099,7 +1108,12 @@ def export_png():
     from io import BytesIO
     
     try:
-        header, encoded = data["png_data"].split(",", 1)
+        raw_data = data["png_data"]
+        if "," in raw_data:
+            header, encoded = raw_data.split(",", 1)
+        else:
+            encoded = raw_data
+            
         png_content = base64.b64decode(encoded)
         return send_file(
             BytesIO(png_content),
@@ -1108,6 +1122,9 @@ def export_png():
             download_name=data["filename"]
         )
     except Exception as e:
+        import traceback
+        print(f"PNG Export Error: {e}")
+        traceback.print_exc()
         return str(e), 500
 
 init_db()

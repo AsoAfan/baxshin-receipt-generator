@@ -32,5 +32,10 @@ if __name__ == '__main__':
     time.sleep(1)
     
     # Create the webview window
-    webview.create_window('Receipt App', f'http://127.0.0.1:{port}', width=1200, height=800)
-    webview.start(private_mode=False)
+    # Using 0.0.0.0 for the server, but the local window should probably use 127.0.0.1
+    # or the actual LAN IP if we want to be consistent.
+    window = webview.create_window('Receipt App', f'http://127.0.0.1:{port}', width=1200, height=800)
+    
+    # We can try to enable more features for the window
+    # private_mode=False is already used to persist data
+    webview.start(private_mode=False, debug=False, http_server=True)
