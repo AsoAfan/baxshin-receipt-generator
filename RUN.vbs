@@ -12,10 +12,11 @@ If Not objFSO.FolderExists(strDistDir) Then
     objFSO.CreateFolder(strDistDir)
 End If
 
-' Copy database to dist folder so app can access it
-If objFSO.FileExists(strDBSource) Then
+' Copy database to dist folder ONLY if it doesn't exist there yet
+' This prevents overwriting the active database with an empty template
+If objFSO.FileExists(strDBSource) And Not objFSO.FileExists(strDBDest) Then
     On Error Resume Next
-    objFSO.CopyFile strDBSource, strDBDest, True
+    objFSO.CopyFile strDBSource, strDBDest, False
     On Error Goto 0
 End If
 

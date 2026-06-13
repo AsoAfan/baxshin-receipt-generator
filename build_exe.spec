@@ -10,7 +10,6 @@ a = Analysis(
         ('static', 'static'),
         ('img', 'img'),
         ('branding.json', '.'),
-        ('receipts.db', '.'),
     ],
     hiddenimports=['waitress', 'flask', 'jinja2'],
     hookspath=[],

@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import sqlite3
+import sys
 from datetime import date, datetime
 from functools import wraps
 from math import ceil
@@ -12,10 +13,35 @@ from typing import Any
 
 from flask import Flask, flash, redirect, render_template, request, send_file, send_from_directory, session, url_for
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "receipts.db"
+# Determine the base directory for persistent data
+if getattr(sys, 'frozen', False):
+    # If running as a PyInstaller bundle, use the directory of the executable
+    BASE_DIR = Path(sys.executable).resolve().parent
+    # Check if we are running from 'dist' folder during development/build
+    if BASE_DIR.name == 'dist':
+        BASE_DIR = BASE_DIR.parent
+else:
+    # If running as a script, use the script's directory
+    BASE_DIR = Path(__file__).resolve().parent
+
+# Allow overriding the database path via environment variable for extra safety
+DB_PATH_ENV = os.getenv("RECEIPT_DB_PATH")
+if DB_PATH_ENV:
+    DB_PATH = Path(DB_PATH_ENV).resolve()
+else:
+    DB_PATH = BASE_DIR / "receipts.db"
+
+# Ensure the database directory exists
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 BRANDING_CONFIG_PATH = BASE_DIR / "branding.json"
 CONFIG_PATH = BASE_DIR / "app_config.json"
+
+print(f" * Database path: {DB_PATH}")
+if not DB_PATH.exists():
+    print(" * Database not found, will be created.")
+else:
+    print(" * Database found and will be used.")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("RECEIPT_SECRET_KEY", "change-this-secret")
@@ -141,6 +167,8 @@ def _ensure_column(
 
 
 def init_db() -> None:
+    if Path("receipts.db").exists():
+        return 
     with get_db() as conn:
         conn.executescript(
             """
@@ -195,35 +223,38 @@ def init_db() -> None:
         )
 
         # Keep older local databases compatible with newer queries/routes.
-        _ensure_column(
-            conn,
-            "customers",
-            "created_at",
-            "TEXT",
-            "UPDATE customers SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = ''",
-        )
-        _ensure_column(
-            conn,
-            "customers",
-            "last_used",
-            "TEXT",
-            "UPDATE customers SET last_used = created_at WHERE last_used IS NULL OR last_used = ''",
-        )
-        _ensure_column(
-            conn,
-            "customers",
-            "times_used",
-            "INTEGER DEFAULT 1",
-            "UPDATE customers SET times_used = 1 WHERE times_used IS NULL OR times_used < 0",
-        )
+        try:
+            _ensure_column(
+                conn,
+                "customers",
+                "created_at",
+                "TEXT",
+                "UPDATE customers SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = ''",
+            )
+            _ensure_column(
+                conn,
+                "customers",
+                "last_used",
+                "TEXT",
+                "UPDATE customers SET last_used = created_at WHERE last_used IS NULL OR last_used = ''",
+            )
+            _ensure_column(
+                conn,
+                "customers",
+                "times_used",
+                "INTEGER DEFAULT 1",
+                "UPDATE customers SET times_used = 1 WHERE times_used IS NULL OR times_used < 0",
+            )
 
-        _ensure_column(
-            conn,
-            "items",
-            "created_at",
-            "TEXT",
-            "UPDATE items SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = ''",
-        )
+            _ensure_column(
+                conn,
+                "items",
+                "created_at",
+                "TEXT",
+                "UPDATE items SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = ''",
+            )
+        except sqlite3.Error as e:
+            print(f"DEBUG: Migration failed (might be expected for new DB): {e}")
         _ensure_column(
             conn,
             "items",

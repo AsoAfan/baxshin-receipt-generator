@@ -33,12 +33,19 @@ pip install -r requirements.txt
 4. Start app:
 
 ```bash
-flask --app app run
+python app.py
 ```
 
 5. Open browser:
 
-- http://127.0.0.1:5000
+- http://127.0.0.1:81 (default port)
+
+## Database Persistence
+
+The app saves its data in `receipts.db` in the same folder as `app.py`. 
+To ensure your data is safe on PC restarts:
+- Always run the app from the same project folder.
+- Do not move `app.py` without its corresponding `receipts.db` file.
 
 ## Database
 
@@ -47,6 +54,8 @@ The app creates `receipts.db` automatically on first run with these tables:
 - `sids`
 - `receipts`
 - `receipt_items`
+- `customers`
+- `items`
 
 ## Branding (easy to change later)
 
